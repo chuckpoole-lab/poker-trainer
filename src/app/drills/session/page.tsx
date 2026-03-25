@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo, Suspense } from 'react';
+import { useState, useCallback, useMemo, useRef, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { PokerTableLayout, ActionBar, FeedbackCard, SpotContextBar } from '@/components/poker-table';
 import { ProgressBar, Button } from '@/components/ui';
@@ -8,6 +8,7 @@ import { MODULES } from '@/lib/data/categories';
 import { SimplifiedAction, ResultClass, ACTION_LABELS, LeakCategoryId } from '@/lib/types';
 import { scoreResponse } from '@/lib/services/scoring';
 import { generateDrillSet, type GeneratedSpot } from '@/lib/services/spot-generator';
+import { saveDrillResult } from '@/lib/services/progress-storage';
 
 const DEFAULT_DRILL_SIZE = 15;
 const MAX_DRILL_SIZE = 100;
@@ -55,6 +56,7 @@ function DrillSessionContent() {
   const [showFeedback, setShowFeedback] = useState(false);
   const [lastResult, setLastResult] = useState<{ result: ResultClass; explanation: string; correctAction: string } | null>(null);
   const [done, setDone] = useState(false);
+  const savedRef = useRef(false); // prevent double-saving
 
   const current = drillSet[idx];
   const spot = current?.spot;
@@ -63,15 +65,23 @@ function DrillSessionContent() {
   const handleSelect = useCallback((action: SimplifiedAction) => {
     if (!spot) return;
     const result = scoreResponse(spot, action);
-    setTotal(p => p + 1);
-    if (result.result === ResultClass.CORRECT) setCorrect(p => p + 1);
+    const newTotal = total + 1;
+    const newCorrect = result.result === ResultClass.CORRECT ? correct + 1 : correct;
+    setTotal(newTotal);
+    setCorrect(newCorrect);
     setLastResult({
       result: result.result,
       explanation: spot.explanation.plain,
       correctAction: ACTION_LABELS[spot.simplifiedAction],
     });
     setShowFeedback(true);
-  }, [spot]);
+
+    // Save when this is the last hand
+    if (idx + 1 >= drillSet.length && !savedRef.current) {
+      savedRef.current = true;
+      saveDrillResult(moduleId, newCorrect, newTotal);
+    }
+  }, [spot, total, correct, idx, drillSet.length, moduleId]);
 
   const handleNext = useCallback(() => {
     setShowFeedback(false);
@@ -91,6 +101,7 @@ function DrillSessionContent() {
     setDone(false);
     setShowFeedback(false);
     setLastResult(null);
+    savedRef.current = false;
   }, [drillSize, preferredCategory]);
 
   /* ── Drill complete screen ── */

@@ -1,10 +1,11 @@
 'use client';
 
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Suspense } from 'react';
+import { Suspense, useRef } from 'react';
 import { ASSESSMENT_SPOTS } from '@/lib/data/assessment-spots';
 import { LEAK_CATEGORIES } from '@/lib/data/categories';
 import { calculateLeakScores } from '@/lib/services/scoring';
+import { saveAssessmentResult } from '@/lib/services/progress-storage';
 import { ScoreBand } from '@/lib/types';
 import type { AssessmentResponse, LeakScore } from '@/lib/types';
 import { DonutChart, Card, Badge, ProgressBar, Button } from '@/components/ui';
@@ -42,6 +43,7 @@ function ResultsContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const raw = searchParams.get('data');
+  const savedRef = useRef(false);
 
   if (!raw) {
     return (
@@ -66,6 +68,12 @@ function ResultsContent() {
   const overall = responses.length > 0
     ? Math.round(responses.reduce((s, r) => s + r.score, 0) / responses.length * 100)
     : 0;
+
+  // Persist assessment results (once per page load)
+  if (responses.length > 0 && !savedRef.current) {
+    savedRef.current = true;
+    saveAssessmentResult(responses, leakScores, overall);
+  }
 
   const donutColor = overall >= 80
     ? 'var(--color-correct)'

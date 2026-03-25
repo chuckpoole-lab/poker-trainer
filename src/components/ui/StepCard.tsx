@@ -79,29 +79,6 @@ export default function StepCard({
           {step.content}
         </div>
 
-        {/* dot indicators */}
-        {steps.length > 1 && (
-          <div style={{
-            display: 'flex',
-            justifyContent: 'center',
-            gap: 'var(--space-2)',
-            marginBottom: 'var(--space-4)',
-          }}>
-            {steps.map((_, i) => (
-              <div
-                key={i}
-                style={{
-                  width: i === current ? 20 : 8,
-                  height: 8,
-                  borderRadius: 'var(--radius-full)',
-                  background: i === current ? 'var(--primary)' : 'var(--surface-high)',
-                  transition: 'all var(--duration-normal) var(--ease-out)',
-                }}
-              />
-            ))}
-          </div>
-        )}
-
         {/* action buttons */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
           {isLast ? (

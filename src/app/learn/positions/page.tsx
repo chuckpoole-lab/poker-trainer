@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
 import { POSITION_LESSONS } from '@/lib/data/foundations';
@@ -21,6 +21,19 @@ function PositionLessonContent() {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
   const [responses, setResponses] = useState<ConceptResponse[]>([]);
+
+  // Reset all quiz state when the position group changes (e.g. navigating from early → middle)
+  const prevGroup = useRef(group);
+  useEffect(() => {
+    if (prevGroup.current !== group) {
+      prevGroup.current = group;
+      setPhase('lesson');
+      setQuizIdx(0);
+      setSelectedIndex(null);
+      setShowFeedback(false);
+      setResponses([]);
+    }
+  }, [group]);
 
   const question = lesson.quizQuestions[quizIdx];
   const isCorrect = selectedIndex === question?.correctIndex;
