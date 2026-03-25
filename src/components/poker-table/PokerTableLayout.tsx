@@ -213,30 +213,14 @@ export default function PokerTableLayout({
                 background: 'linear-gradient(to bottom, rgba(0,0,0,0.18) 0%, transparent 18%)',
               }} />
 
-              {/* ── center info ── */}
+              {/* ── center info — action text only (stack shown in context bar below) ── */}
               <div style={{
                 position: 'absolute', top: '50%', left: '50%',
                 transform: 'translate(-50%, -50%)', textAlign: 'center', zIndex: 2,
               }}>
                 <div style={{
-                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                  background: `${C.surfaceBright}73`, backdropFilter: 'blur(12px)',
-                  WebkitBackdropFilter: 'blur(12px)',
-                  borderRadius: 28, padding: '7px 22px',
-                  boxShadow: '0 4px 16px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05)',
-                }}>
-                  <span style={{
-                    fontSize: 26, fontWeight: 800, color: C.onSurface,
-                    fontFamily: 'Noto Serif, Georgia, serif',
-                    textShadow: '0 1px 4px rgba(0,0,0,0.6)', letterSpacing: '-0.02em',
-                  }}>
-                    {stackDepthBb}
-                    <span style={{ fontSize: 14, fontWeight: 600, opacity: 0.6, fontFamily: 'Manrope, sans-serif' }}>bb</span>
-                  </span>
-                </div>
-                <div style={{
-                  fontSize: 12, color: `${C.onSurface}b3`, marginTop: 10,
-                  maxWidth: 200, lineHeight: 1.4,
+                  fontSize: 13, color: `${C.onSurface}cc`,
+                  maxWidth: 200, lineHeight: 1.5,
                   fontFamily: 'Manrope, sans-serif',
                   textShadow: '0 1px 3px rgba(0,0,0,0.6)',
                 }}>

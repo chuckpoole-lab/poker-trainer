@@ -25,6 +25,9 @@ function ReadyStep() {
 function GuideStep() {
   const items: { label: string; desc: string }[] = [
     { label: 'UTG', desc: 'Under the Gun (first to act)' },
+    { label: 'UTG+1', desc: 'Under the Gun +1' },
+    { label: 'MP',  desc: 'Middle Position' },
+    { label: 'LJ',  desc: 'Lojack' },
     { label: 'HJ',  desc: 'Hijack' },
     { label: 'CO',  desc: 'Cutoff' },
     { label: 'BTN', desc: 'Button (dealer, best position)' },

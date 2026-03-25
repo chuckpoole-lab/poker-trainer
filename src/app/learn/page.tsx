@@ -10,7 +10,7 @@ const PHASES = [
     description: 'Positions, terminology, and core concepts every player needs.',
     icon: '🧠',
     href: '/learn/foundations',
-    questions: 13,
+    questions: 14,
     estimate: '5 min',
   },
   {

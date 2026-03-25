@@ -25,6 +25,22 @@ const LEAK_DISPLAY_NAMES: Record<LeakCategoryId, string> = {
   [LeakCategoryId.FACING_OPENS]: 'Facing Opens',
 };
 
+/**
+ * Normalize universal button actions to match spot-specific actions.
+ * The UI always shows Fold / Raise / Call / All In, but spots may use
+ * OPEN, LIMP, RAISE_FOLD, RAISE_CALL internally.
+ */
+function actionsMatch(userAction: SimplifiedAction, spotAction: SimplifiedAction): boolean {
+  if (userAction === spotAction) return true;
+  // "Raise" button (OPEN) matches any raise variant
+  if (userAction === SimplifiedAction.OPEN &&
+    (spotAction === SimplifiedAction.RAISE_FOLD || spotAction === SimplifiedAction.RAISE_CALL)) return true;
+  // "Call" button matches LIMP (calling the BB in an unopened pot)
+  if (userAction === SimplifiedAction.CALL && spotAction === SimplifiedAction.LIMP) return true;
+  if (userAction === SimplifiedAction.LIMP && spotAction === SimplifiedAction.CALL) return true;
+  return false;
+}
+
 export function scoreSpot(
   userAction: SimplifiedAction,
   spot: SpotDecision,
@@ -32,10 +48,10 @@ export function scoreSpot(
   let result: ResultClass;
   let score: number;
 
-  if (userAction === spot.baselineAction) {
+  if (actionsMatch(userAction, spot.baselineAction)) {
     result = ResultClass.CORRECT;
     score = 1.0;
-  } else if (spot.acceptableActions.includes(userAction)) {
+  } else if (spot.acceptableActions.some(a => actionsMatch(userAction, a))) {
     result = ResultClass.ACCEPTABLE;
     score = 0.7;
   } else {
