@@ -28,6 +28,15 @@ export interface Explanation {
   advanced?: string;
 }
 
+/**
+ * Per-action "why" explanations that address the specific choice the user made.
+ * Keys are SimplifiedAction values. Each string explains why that action is
+ * correct, acceptable, or a mistake for the given spot.
+ */
+export interface ActionExplanations {
+  [action: string]: string;
+}
+
 export interface SpotDecision {
   id: string;
   spotTemplateId: string;
@@ -38,6 +47,8 @@ export interface SpotDecision {
   difficultyBand: DifficultyBand;
   leakCategory: LeakCategoryId;
   explanation: Explanation;
+  /** Per-action "why" explanations — keyed by the universal button action (fold/open/call/jam) */
+  actionExplanations?: ActionExplanations;
   assessmentOrder?: number;
 }
 

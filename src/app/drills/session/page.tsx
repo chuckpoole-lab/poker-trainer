@@ -9,6 +9,7 @@ import { SimplifiedAction, ResultClass, ACTION_LABELS, LeakCategoryId } from '@/
 import { scoreResponse } from '@/lib/services/scoring';
 import { generateDrillSet, type GeneratedSpot } from '@/lib/services/spot-generator';
 import { saveDrillResult } from '@/lib/services/progress-storage';
+import { getActionExplanation } from '@/lib/data/action-explanations';
 
 const DEFAULT_DRILL_SIZE = 15;
 const MAX_DRILL_SIZE = 100;
@@ -54,7 +55,7 @@ function DrillSessionContent() {
   const [correct, setCorrect] = useState(0);
   const [total, setTotal] = useState(0);
   const [showFeedback, setShowFeedback] = useState(false);
-  const [lastResult, setLastResult] = useState<{ result: ResultClass; explanation: string; correctAction: string } | null>(null);
+  const [lastResult, setLastResult] = useState<{ result: ResultClass; explanation: string; correctAction: string; whyExplanation: string } | null>(null);
   const [done, setDone] = useState(false);
   const savedRef = useRef(false); // prevent double-saving
 
@@ -73,6 +74,7 @@ function DrillSessionContent() {
       result: result.result,
       explanation: spot.explanation.plain,
       correctAction: ACTION_LABELS[spot.simplifiedAction],
+      whyExplanation: getActionExplanation(spot, template, action),
     });
     setShowFeedback(true);
 
@@ -196,6 +198,7 @@ function DrillSessionContent() {
           result={lastResult.result}
           correctAction={lastResult.correctAction}
           explanation={lastResult.explanation}
+          whyExplanation={lastResult.whyExplanation}
           nextLabel={idx + 1 >= drillSet.length ? 'See Results' : 'Next Hand'}
           onNext={handleNext}
         />

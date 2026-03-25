@@ -8,6 +8,7 @@ import { ASSESSMENT_SPOTS, getTemplate } from '@/lib/data/assessment-spots';
 import { SimplifiedAction, ResultClass, ACTION_LABELS } from '@/lib/types';
 import type { AssessmentResponse } from '@/lib/types';
 import { scoreResponse } from '@/lib/services/scoring';
+import { getActionExplanation } from '@/lib/data/action-explanations';
 
 /* ── Onboarding step content ── */
 function ReadyStep() {
@@ -103,7 +104,7 @@ export default function AssessmentPage() {
   const [currentIdx, setCurrentIdx] = useState(0);
   const [responses, setResponses] = useState<AssessmentResponse[]>([]);
   const [showFeedback, setShowFeedback] = useState(false);
-  const [lastResult, setLastResult] = useState<{ result: ResultClass; explanation: string; correctAction: string } | null>(null);
+  const [lastResult, setLastResult] = useState<{ result: ResultClass; explanation: string; correctAction: string; whyExplanation: string } | null>(null);
 
   const spot = ASSESSMENT_SPOTS[currentIdx];
   const template = getTemplate(spot.spotTemplateId)!;
@@ -124,6 +125,7 @@ export default function AssessmentPage() {
       result: result.result,
       explanation: spot.explanation.plain,
       correctAction: ACTION_LABELS[spot.simplifiedAction],
+      whyExplanation: getActionExplanation(spot, template, action),
     });
     setShowFeedback(true);
   }, [spot]);
@@ -193,6 +195,7 @@ export default function AssessmentPage() {
           result={lastResult.result}
           correctAction={lastResult.correctAction}
           explanation={lastResult.explanation}
+          whyExplanation={lastResult.whyExplanation}
           nextLabel={currentIdx + 1 >= totalSpots ? 'See Results' : 'Next Spot'}
           onNext={handleNext}
         />
