@@ -1,0 +1,37 @@
+
+> poker-trainer@0.1.0 build
+> next build
+
+▲ Next.js 16.2.1 (Turbopack)
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 2.1s
+  Running TypeScript ...
+  Finished TypeScript in 3.3s ...
+  Collecting page data using 15 workers ...
+  Generating static pages using 15 workers (0/16) ...
+  Generating static pages using 15 workers (4/16) 
+  Generating static pages using 15 workers (8/16) 
+  Generating static pages using 15 workers (12/16) 
+✓ Generating static pages using 15 workers (16/16) in 435ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ○ /assessment
+├ ○ /drills
+├ ○ /drills/session
+├ ○ /learn
+├ ○ /learn/foundations
+├ ○ /learn/positions
+├ ○ /library
+├ ○ /progress
+├ ○ /results
+├ ○ /review
+├ ○ /settings
+└ ○ /study-plan
+
+
+○  (Static)  prerendered as static content
+

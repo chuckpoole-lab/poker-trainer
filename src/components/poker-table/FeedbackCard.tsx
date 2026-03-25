@@ -86,7 +86,7 @@ export default function FeedbackCard({
                 background: 'var(--surface-high)',
                 border: '1px solid var(--border)',
                 borderRadius: 'var(--radius-md)',
-                color: 'var(--primary)',
+                color: 'var(--color-leak)',
                 fontSize: 'var(--text-sm)',
                 fontWeight: 700,
                 fontFamily: 'var(--font-body)',
@@ -96,8 +96,7 @@ export default function FeedbackCard({
                 transition: 'background 0.15s ease',
               }}
             >
-              <span style={{ fontSize: 16 }}>?</span>
-              {result === ResultClass.CORRECT ? 'Why is this correct?' : 'Why was my choice wrong?'}
+                {result === ResultClass.CORRECT ? 'Why is this correct?' : 'Why was my choice wrong?'}
             </button>
           ) : (
             <div

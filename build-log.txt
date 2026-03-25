@@ -1,0 +1,13 @@
+
+> poker-trainer@0.1.0 build
+> next build
+
+
+> Build error occurred
+Error: EPERM: operation not permitted, unlink 'C:\Users\Chuck Local\OneDrive\Claude CoWork\Poker Trainer\poker-trainer\.next\server\app\assessment.segments'
+    at ignore-listed frames {
+  errno: -4048,
+  code: 'EPERM',
+  syscall: 'unlink',
+  path: 'C:\\Users\\Chuck Local\\OneDrive\\Claude CoWork\\Poker Trainer\\poker-trainer\\.next\\server\\app\\assessment.segments'
+}
