@@ -1,0 +1,210 @@
+@import "tailwindcss";
+
+:root {
+  --bg-primary: #0a0e17;
+  --bg-secondary: #111827;
+  --bg-card: #1a2332;
+  --bg-elevated: #243044;
+  --bg-table: #1a5c3a;
+  --bg-table-rim: #0d3321;
+  --bg-table-felt: #1e6b43;
+  --text-primary: #e8ecf1;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --text-accent: #38bdf8;
+  --color-correct: #22c55e;
+  --color-acceptable: #eab308;
+  --color-leak: #ef4444;
+  --color-accent: #38bdf8;
+  --color-accent-hover: #0ea5e9;
+  --border-subtle: #1e293b;
+  --border-card: #2a3a4e;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  outline: none;
+  font-family: inherit;
+}
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.badge-correct {
+  background: rgba(34, 197, 94, 0.15);
+  color: var(--color-correct);
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.badge-acceptable {
+  background: rgba(234, 179, 8, 0.15);
+  color: var(--color-acceptable);
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.badge-leak {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--color-leak);
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.btn-primary {
+  background: var(--color-accent);
+  color: #0a0e17;
+  padding: 14px 32px;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 700;
+  transition: background 0.2s;
+  letter-spacing: 0.02em;
+}
+
+.btn-primary:hover {
+  background: var(--color-accent-hover);
+}
+
+.btn-secondary {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  padding: 12px 24px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  border: 1px solid var(--border-card);
+  transition: background 0.2s;
+}
+
+.btn-secondary:hover {
+  background: var(--bg-card);
+}
+
+/* Action buttons for poker decisions */
+.action-btn {
+  padding: 16px 28px;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 700;
+  transition: all 0.15s;
+  min-width: 120px;
+  text-align: center;
+}
+
+.action-btn-fold {
+  background: #374151;
+  color: #9ca3af;
+}
+.action-btn-fold:hover {
+  background: #4b5563;
+  color: #d1d5db;
+}
+
+.action-btn-open {
+  background: #1e40af;
+  color: #93c5fd;
+}
+.action-btn-open:hover {
+  background: #2563eb;
+  color: #bfdbfe;
+}
+
+.action-btn-jam {
+  background: #991b1b;
+  color: #fca5a5;
+}
+.action-btn-jam:hover {
+  background: #b91c1c;
+  color: #fecaca;
+}
+
+.action-btn-call {
+  background: #166534;
+  color: #86efac;
+}
+.action-btn-call:hover {
+  background: #15803d;
+  color: #bbf7d0;
+}
+
+.action-btn-raise-fold {
+  background: #713f12;
+  color: #fcd34d;
+}
+.action-btn-raise-fold:hover {
+  background: #854d0e;
+  color: #fde68a;
+}
+
+.action-btn-raise-call {
+  background: #4c1d95;
+  color: #c4b5fd;
+}
+.action-btn-raise-call:hover {
+  background: #5b21b6;
+  color: #ddd6fe;
+}
+
+.action-btn-limp {
+  background: #374151;
+  color: #d1d5db;
+}
+.action-btn-limp:hover {
+  background: #4b5563;
+  color: #e5e7eb;
+}
+
+/* Score bar */
+.score-bar-track {
+  background: var(--bg-elevated);
+  border-radius: 6px;
+  height: 8px;
+  width: 100%;
+  overflow: hidden;
+}
+
+.score-bar-fill {
+  height: 100%;
+  border-radius: 6px;
+  transition: width 0.6s ease-out;
+}
+
+/* Progress indicator */
+.progress-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--bg-elevated);
+  transition: background 0.2s;
+}
+
+.progress-dot-active {
+  background: var(--color-accent);
+}
+
+.progress-dot-complete {
+  background: var(--color-correct);
+}
