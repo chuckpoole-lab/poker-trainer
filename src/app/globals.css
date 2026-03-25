@@ -1,34 +1,109 @@
 @import "tailwindcss";
 
+/* ═══════════════════════════════════════════════════════════════════
+   The Grandmaster's Lounge — Design Tokens
+   ═══════════════════════════════════════════════════════════════════ */
+
 :root {
-  --bg-primary: #0a0e17;
-  --bg-secondary: #111827;
-  --bg-card: #1a2332;
-  --bg-elevated: #243044;
-  --bg-table: #1a5c3a;
-  --bg-table-rim: #0d3321;
-  --bg-table-felt: #1e6b43;
-  --text-primary: #e8ecf1;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
-  --text-accent: #38bdf8;
-  --color-correct: #22c55e;
-  --color-acceptable: #eab308;
-  --color-leak: #ef4444;
-  --color-accent: #38bdf8;
-  --color-accent-hover: #0ea5e9;
-  --border-subtle: #1e293b;
-  --border-card: #2a3a4e;
+  /* ── Color: Surfaces ── */
+  --surface:               #121411;
+  --surface-low:           #1a1c19;
+  --surface-container:     #1e201d;
+  --surface-high:          #292b27;
+  --surface-bright:        #383a36;
+
+  /* ── Color: Felt & Rail ── */
+  --felt-base:             #0e3621;
+  --felt-light:            #14492e;
+  --mahogany:              #673f33;
+  --mahogany-dark:         #4a271c;
+  --mahogany-deep:         #311309;
+
+  /* ── Color: Semantic ── */
+  --primary:               #a6d1b2;
+  --primary-dim:           #40674e;
+  --gold:                  #e9c349;
+  --gold-dim:              #cca72f;
+  --on-surface:            #e3e3de;
+  --on-surface-variant:    #c1c8c0;
+  --outline-variant:       #414943;
+  --muted:                 #7a8279;
+
+  /* ── Color: Feedback ── */
+  --color-correct:         #22c55e;
+  --color-acceptable:      #eab308;
+  --color-leak:            #ef4444;
+
+  /* ── Legacy aliases (consumed by existing pages until migrated) ── */
+  --bg-primary:            var(--surface);
+  --bg-secondary:          var(--surface-low);
+  --bg-card:               var(--surface-container);
+  --bg-elevated:           var(--surface-high);
+  --bg-table:              var(--felt-base);
+  --bg-table-rim:          var(--mahogany-dark);
+  --bg-table-felt:         var(--felt-light);
+  --text-primary:          var(--on-surface);
+  --text-secondary:        var(--on-surface-variant);
+  --text-muted:            var(--muted);
+  --text-accent:           var(--primary);
+  --color-accent:          var(--primary);
+  --color-accent-hover:    var(--primary-dim);
+  --border-subtle:         var(--surface-high);
+  --border-card:           var(--outline-variant);
+
+  /* ── Spacing scale ── */
+  --space-0: 0px;
+  --space-1: 4px;   --space-2: 8px;   --space-3: 12px;
+  --space-4: 16px;  --space-5: 20px;  --space-6: 24px;
+  --space-8: 32px;  --space-10: 40px; --space-12: 48px;
+  --space-16: 64px;
+
+  /* ── Typography scale ── */
+  --font-display: 'Noto Serif', Georgia, serif;
+  --font-body:    'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  --text-xs: 11px;  --text-sm: 13px;  --text-base: 15px;
+  --text-lg: 18px;  --text-xl: 22px;  --text-2xl: 28px;
+  --text-3xl: 36px;
+
+  --font-normal: 400;   --font-medium: 500;
+  --font-semibold: 600; --font-bold: 700; --font-black: 800;
+
+  /* ── Radius scale ── */
+  --radius-sm: 6px;   --radius-md: 10px;
+  --radius-lg: 14px;  --radius-xl: 20px;  --radius-full: 9999px;
+
+  /* ── Shadows (tinted, not pure black — per design system) ── */
+  --shadow-sm:  0 1px 3px rgba(18,20,17,0.4);
+  --shadow-md:  0 2px 8px rgba(18,20,17,0.5);
+  --shadow-lg:  0 4px 20px rgba(18,20,17,0.6);
+  --shadow-xl:  0 8px 32px rgba(18,20,17,0.7);
+  --shadow-glow-correct:    0 0 12px rgba(34,197,94,0.3);
+  --shadow-glow-acceptable: 0 0 12px rgba(234,179,8,0.3);
+  --shadow-glow-leak:       0 0 12px rgba(239,68,68,0.3);
+  --shadow-glow-primary:    0 0 16px rgba(166,209,178,0.25);
+  --shadow-glow-gold:       0 0 16px rgba(233,195,73,0.25);
+
+  /* ── Transitions ── */
+  --ease-out:        cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out:     cubic-bezier(0.4, 0, 0.2, 1);
+  --duration-fast:   150ms;
+  --duration-normal: 250ms;
+  --duration-slow:   400ms;
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   Base Reset & Typography
+   ═══════════════════════════════════════════════════════════════════ */
 
 * { box-sizing: border-box; }
 
 html, body {
   margin: 0;
   padding: 0;
-  background: var(--bg-primary);
-  color: var(--text-primary);
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--surface);
+  color: var(--on-surface);
+  font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -39,148 +114,148 @@ button {
   font-family: inherit;
 }
 
+/* ═══════════════════════════════════════════════════════════════════
+   Legacy Utility Classes (kept for un-migrated pages)
+   ═══════════════════════════════════════════════════════════════════ */
+
 .card {
-  background: var(--bg-card);
-  border: 1px solid var(--border-card);
-  border-radius: 12px;
-  padding: 20px;
+  background: var(--surface-container);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
 }
 
 .badge-correct {
   background: rgba(34, 197, 94, 0.15);
   color: var(--color-correct);
-  padding: 4px 12px;
-  border-radius: 20px;
-  font-weight: 600;
-  font-size: 14px;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-full);
+  font-weight: var(--font-semibold);
+  font-size: var(--text-sm);
 }
 
 .badge-acceptable {
   background: rgba(234, 179, 8, 0.15);
   color: var(--color-acceptable);
-  padding: 4px 12px;
-  border-radius: 20px;
-  font-weight: 600;
-  font-size: 14px;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-full);
+  font-weight: var(--font-semibold);
+  font-size: var(--text-sm);
 }
 
 .badge-leak {
   background: rgba(239, 68, 68, 0.15);
   color: var(--color-leak);
-  padding: 4px 12px;
-  border-radius: 20px;
-  font-weight: 600;
-  font-size: 14px;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-full);
+  font-weight: var(--font-semibold);
+  font-size: var(--text-sm);
 }
 
 .btn-primary {
-  background: var(--color-accent);
-  color: #0a0e17;
-  padding: 14px 32px;
-  border-radius: 10px;
-  font-size: 16px;
-  font-weight: 700;
-  transition: background 0.2s;
+  background: var(--primary);
+  color: var(--surface);
+  padding: var(--space-4) var(--space-8);
+  border-radius: var(--radius-md);
+  font-size: var(--text-base);
+  font-weight: var(--font-bold);
+  transition: background var(--duration-fast) var(--ease-out);
   letter-spacing: 0.02em;
 }
 
 .btn-primary:hover {
-  background: var(--color-accent-hover);
+  background: var(--primary-dim);
 }
 
 .btn-secondary {
-  background: var(--bg-elevated);
-  color: var(--text-primary);
-  padding: 12px 24px;
-  border-radius: 10px;
-  font-size: 15px;
-  font-weight: 600;
-  border: 1px solid var(--border-card);
-  transition: background 0.2s;
+  background: var(--surface-high);
+  color: var(--on-surface);
+  padding: var(--space-3) var(--space-6);
+  border-radius: var(--radius-md);
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  border: 1px solid var(--outline-variant);
+  transition: background var(--duration-fast) var(--ease-out);
 }
 
 .btn-secondary:hover {
-  background: var(--bg-card);
+  background: var(--surface-container);
 }
 
 /* Action buttons for poker decisions */
 .action-btn {
-  padding: 16px 28px;
-  border-radius: 10px;
-  font-size: 16px;
-  font-weight: 700;
-  transition: all 0.15s;
+  padding: var(--space-4) var(--space-6);
+  border-radius: var(--radius-md);
+  font-size: var(--text-base);
+  font-weight: var(--font-bold);
+  transition: all var(--duration-fast) var(--ease-out);
   min-width: 120px;
   text-align: center;
 }
 
 .action-btn-fold {
-  background: #374151;
-  color: #9ca3af;
+  background: var(--surface-high);
+  color: var(--on-surface-variant);
 }
 .action-btn-fold:hover {
-  background: #4b5563;
-  color: #d1d5db;
+  background: var(--surface-bright);
+  color: var(--on-surface);
 }
 
 .action-btn-open {
-  background: #1e40af;
-  color: #93c5fd;
+  background: rgba(166,209,178,0.2);
+  color: var(--primary);
 }
 .action-btn-open:hover {
-  background: #2563eb;
-  color: #bfdbfe;
+  background: rgba(166,209,178,0.3);
 }
 
 .action-btn-jam {
-  background: #991b1b;
+  background: rgba(239,68,68,0.2);
   color: #fca5a5;
 }
 .action-btn-jam:hover {
-  background: #b91c1c;
+  background: rgba(239,68,68,0.3);
   color: #fecaca;
 }
 
 .action-btn-call {
-  background: #166534;
+  background: rgba(34,197,94,0.2);
   color: #86efac;
 }
 .action-btn-call:hover {
-  background: #15803d;
+  background: rgba(34,197,94,0.3);
   color: #bbf7d0;
 }
 
 .action-btn-raise-fold {
-  background: #713f12;
-  color: #fcd34d;
+  background: rgba(233,195,73,0.2);
+  color: var(--gold);
 }
 .action-btn-raise-fold:hover {
-  background: #854d0e;
-  color: #fde68a;
+  background: rgba(233,195,73,0.3);
 }
 
 .action-btn-raise-call {
-  background: #4c1d95;
-  color: #c4b5fd;
+  background: rgba(166,209,178,0.15);
+  color: var(--primary);
 }
 .action-btn-raise-call:hover {
-  background: #5b21b6;
-  color: #ddd6fe;
+  background: rgba(166,209,178,0.25);
 }
 
 .action-btn-limp {
-  background: #374151;
-  color: #d1d5db;
+  background: var(--surface-high);
+  color: var(--on-surface);
 }
 .action-btn-limp:hover {
-  background: #4b5563;
-  color: #e5e7eb;
+  background: var(--surface-bright);
 }
 
 /* Score bar */
 .score-bar-track {
-  background: var(--bg-elevated);
-  border-radius: 6px;
+  background: var(--surface-high);
+  border-radius: var(--radius-sm);
   height: 8px;
   width: 100%;
   overflow: hidden;
@@ -188,8 +263,8 @@ button {
 
 .score-bar-fill {
   height: 100%;
-  border-radius: 6px;
-  transition: width 0.6s ease-out;
+  border-radius: var(--radius-sm);
+  transition: width 0.6s var(--ease-out);
 }
 
 /* Progress indicator */
@@ -197,12 +272,12 @@ button {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: var(--bg-elevated);
-  transition: background 0.2s;
+  background: var(--surface-high);
+  transition: background var(--duration-fast);
 }
 
 .progress-dot-active {
-  background: var(--color-accent);
+  background: var(--primary);
 }
 
 .progress-dot-complete {

@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect, Suspense } from 'react';
+import { useState, useCallback, useMemo, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { PokerTableLayout, DecisionButtonGroup } from '@/components/poker-table';
+import { PokerTableLayout, ActionBar, FeedbackCard, SpotContextBar } from '@/components/poker-table';
+import { ProgressBar, Button } from '@/components/ui';
 import { MODULES } from '@/lib/data/categories';
 import { SimplifiedAction, ResultClass, ACTION_LABELS, LeakCategoryId } from '@/lib/types';
 import { scoreResponse } from '@/lib/services/scoring';
@@ -16,7 +17,6 @@ function DrillSessionContent() {
   const router = useRouter();
   const moduleId = searchParams.get('module') ?? 'mixed';
 
-  // Read drill size from URL param, then localStorage fallback, then default
   const drillSize = useMemo(() => {
     const urlCount = searchParams.get('count');
     if (urlCount) {
@@ -35,7 +35,6 @@ function DrillSessionContent() {
     return DEFAULT_DRILL_SIZE;
   }, [searchParams]);
 
-  // Resolve module to leak category
   const preferredCategory = useMemo<LeakCategoryId | undefined>(() => {
     if (moduleId === 'mixed') return undefined;
     const mod = MODULES.find(m => m.id === moduleId);
@@ -46,7 +45,6 @@ function DrillSessionContent() {
     return undefined;
   }, [moduleId]);
 
-  // Generate drill set
   const [drillSet, setDrillSet] = useState<GeneratedSpot[]>(() =>
     generateDrillSet(drillSize, preferredCategory)
   );
@@ -95,9 +93,9 @@ function DrillSessionContent() {
     setLastResult(null);
   }, [drillSize, preferredCategory]);
 
+  /* ── Drill complete screen ── */
   if (done || !spot || !template) {
     const pct = total > 0 ? Math.round((correct / total) * 100) : 0;
-    const emoji = pct >= 80 ? '\u{1F3C6}' : pct >= 60 ? '\u{1F4AA}' : '\u{1F4D6}';
     const message = pct >= 80
       ? 'Crushing it. Your reads are sharp.'
       : pct >= 60
@@ -106,90 +104,102 @@ function DrillSessionContent() {
 
     return (
       <div style={{ padding: '40px 16px 100px', maxWidth: 480, margin: '0 auto', textAlign: 'center' }}>
-        <div style={{ fontSize: 48, marginBottom: 16 }}>{emoji}</div>
-        <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 8 }}>Drill Complete</h1>
-        <div style={{ fontSize: 36, fontWeight: 800, color: 'var(--color-accent)', marginBottom: 4 }}>
+        <div style={{
+          fontSize: 48,
+          fontWeight: 800,
+          color: pct >= 80 ? 'var(--color-correct)' : pct >= 60 ? 'var(--color-acceptable)' : 'var(--color-leak)',
+          fontFamily: 'var(--font-display)',
+          marginBottom: 8,
+        }}>
           {pct}%
         </div>
-        <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 8 }}>
+        <h1 style={{
+          fontSize: 'var(--text-xl)',
+          fontWeight: 800,
+          marginBottom: 8,
+          fontFamily: 'var(--font-display)',
+          color: 'var(--on-surface)',
+        }}>
+          Drill Complete
+        </h1>
+        <p style={{ color: 'var(--muted)', fontSize: 'var(--text-sm)', marginBottom: 4 }}>
           {correct} of {total} correct
         </p>
-        <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 24 }}>
+        <p style={{ color: 'var(--on-surface-variant)', fontSize: 'var(--text-sm)', marginBottom: 24 }}>
           {message}
         </p>
         <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
-          <button className="btn-primary" onClick={handleRestart}>
+          <Button variant="primary" onClick={handleRestart}>
             New Drill ({drillSize} hands)
-          </button>
-          <button className="btn-secondary" onClick={() => router.push('/drills')}>
+          </Button>
+          <Button variant="secondary" onClick={() => router.push('/drills')}>
             Back to Drills
-          </button>
+          </Button>
         </div>
       </div>
     );
   }
 
+  /* ── Active drill screen ── */
   const progress = (idx / drillSet.length) * 100;
 
   return (
     <div style={{ padding: '20px 16px 100px', maxWidth: 480, margin: '0 auto' }}>
+      {/* Progress header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-        <span style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 600 }}>
+        <span style={{ fontSize: 'var(--text-sm)', color: 'var(--muted)', fontWeight: 600, fontFamily: 'var(--font-body)' }}>
           Hand {idx + 1} of {drillSet.length}
         </span>
-        <span style={{ fontSize: 13, color: 'var(--color-correct)', fontWeight: 600 }}>
+        <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-correct)', fontWeight: 600, fontFamily: 'var(--font-body)' }}>
           {correct}/{total} correct
         </span>
       </div>
-      <div className="score-bar-track" style={{ marginBottom: 20 }}>
-        <div className="score-bar-fill" style={{ width: `${progress}%`, background: 'var(--color-accent)' }} />
+      <ProgressBar value={progress} color="var(--primary)" height={6} />
+
+      {/* Table */}
+      <div style={{ marginTop: 20 }}>
+        <PokerTableLayout
+          key={`drill-${idx}-${spot.id}`}
+          heroPosition={template.position}
+          heroHand={spot.handCode}
+          stackDepthBb={template.stackDepthBb}
+          actionHistory={template.actionHistory}
+        />
       </div>
 
-      <PokerTableLayout
-        key={`drill-${idx}-${spot.id}`}
-        heroPosition={template.position}
-        heroHand={spot.handCode}
+      {/* Hand + stack context */}
+      <SpotContextBar
+        handCode={spot.handCode}
         stackDepthBb={template.stackDepthBb}
-        actionHistory={template.actionHistory}
+        prompt={!showFeedback ? 'What is your play?' : undefined}
       />
 
-      <div style={{ textAlign: 'center', margin: '16px 0 8px', color: 'var(--text-secondary)', fontSize: 14 }}>
-        <strong>{spot.handCode}</strong> at <strong>{template.stackDepthBb}bb</strong>
-      </div>
-
+      {/* Decision buttons or feedback */}
       {!showFeedback ? (
-        <DecisionButtonGroup onSelect={handleSelect} />
-      ) : (
-        <div className="card" style={{ marginTop: 16, textAlign: 'center' }}>
-          <span className={
-            lastResult?.result === ResultClass.CORRECT ? 'badge-correct'
-            : lastResult?.result === ResultClass.ACCEPTABLE ? 'badge-acceptable'
-            : 'badge-leak'
-          }>
-            {lastResult?.result === ResultClass.CORRECT ? 'Correct!'
-            : lastResult?.result === ResultClass.ACCEPTABLE ? 'Acceptable'
-            : 'Leak Found'}
-          </span>
-          {lastResult?.result !== ResultClass.CORRECT && (
-            <p style={{ color: 'var(--color-accent)', fontSize: 14, fontWeight: 600, marginTop: 10, marginBottom: 0 }}>
-              Best play: {lastResult?.correctAction}
-            </p>
-          )}
-          <p style={{ color: 'var(--text-secondary)', fontSize: 14, lineHeight: 1.6, marginTop: 10 }}>
-            {lastResult?.explanation}
-          </p>
-          <button className="btn-primary" onClick={handleNext} style={{ marginTop: 16, width: '100%' }}>
-            {idx + 1 >= drillSet.length ? 'See Results' : 'Next Hand'}
-          </button>
-        </div>
-      )}
+        <ActionBar
+          spotType={template.spotType}
+          onSelect={handleSelect}
+        />
+      ) : lastResult ? (
+        <FeedbackCard
+          result={lastResult.result}
+          correctAction={lastResult.correctAction}
+          explanation={lastResult.explanation}
+          nextLabel={idx + 1 >= drillSet.length ? 'See Results' : 'Next Hand'}
+          onNext={handleNext}
+        />
+      ) : null}
     </div>
   );
 }
 
 export default function DrillSessionPage() {
   return (
-    <Suspense fallback={<div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Loading drill...</div>}>
+    <Suspense fallback={
+      <div style={{ padding: 40, textAlign: 'center', color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>
+        Loading drill...
+      </div>
+    }>
       <DrillSessionContent />
     </Suspense>
   );

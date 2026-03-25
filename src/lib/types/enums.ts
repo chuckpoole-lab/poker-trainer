@@ -128,3 +128,19 @@ export const ACTION_LABELS: Record<SimplifiedAction, string> = {
   [SimplifiedAction.RAISE_CALL]: 'Raise / Call',
   [SimplifiedAction.LIMP]: 'Limp',
 };
+
+/**
+ * Context-aware action map — only show buttons that make sense for each spot type.
+ * Fallback: if a spot type is missing from this map, ActionBar shows all 4 base actions.
+ */
+export const VALID_ACTIONS_BY_SPOT_TYPE: Record<SpotType, SimplifiedAction[]> = {
+  [SpotType.UNOPENED]:        [SimplifiedAction.FOLD, SimplifiedAction.OPEN, SimplifiedAction.JAM],
+  [SpotType.FACING_OPEN]:     [SimplifiedAction.FOLD, SimplifiedAction.CALL, SimplifiedAction.RAISE_FOLD, SimplifiedAction.RAISE_CALL, SimplifiedAction.JAM],
+  [SpotType.FACING_3BET]:     [SimplifiedAction.FOLD, SimplifiedAction.CALL, SimplifiedAction.JAM],
+  [SpotType.SB_UNOPENED]:     [SimplifiedAction.FOLD, SimplifiedAction.OPEN, SimplifiedAction.JAM, SimplifiedAction.LIMP],
+  [SpotType.SB_LIMP_BRANCH]:  [SimplifiedAction.FOLD, SimplifiedAction.LIMP, SimplifiedAction.OPEN, SimplifiedAction.JAM],
+  [SpotType.BB_VS_SB]:        [SimplifiedAction.FOLD, SimplifiedAction.CALL, SimplifiedAction.RAISE_FOLD, SimplifiedAction.RAISE_CALL, SimplifiedAction.JAM],
+  [SpotType.LIMPED_POT]:      [SimplifiedAction.FOLD, SimplifiedAction.CALL, SimplifiedAction.OPEN, SimplifiedAction.JAM],
+  [SpotType.FACING_LIMP]:     [SimplifiedAction.FOLD, SimplifiedAction.OPEN, SimplifiedAction.JAM],
+  [SpotType.MULTI_WAY]:       [SimplifiedAction.FOLD, SimplifiedAction.CALL, SimplifiedAction.OPEN, SimplifiedAction.JAM],
+};
