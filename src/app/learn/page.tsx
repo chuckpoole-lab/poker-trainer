@@ -20,8 +20,8 @@ const PHASES = [
     description: 'UTG and UTG+1: why tight is right when you act first.',
     icon: '🔒',
     href: '/learn/positions?group=early',
-    questions: 3,
-    estimate: '3 min',
+    questions: 7,
+    estimate: '5 min',
   },
   {
     id: 'middle',
@@ -30,8 +30,8 @@ const PHASES = [
     description: 'MP, LJ, and HJ: the transition zone where ranges expand.',
     icon: '↔️',
     href: '/learn/positions?group=middle',
-    questions: 3,
-    estimate: '3 min',
+    questions: 7,
+    estimate: '5 min',
   },
   {
     id: 'late',
@@ -40,8 +40,8 @@ const PHASES = [
     description: 'CO and BTN: the profit seats. Steal blinds and play wide.',
     icon: '💰',
     href: '/learn/positions?group=late',
-    questions: 3,
-    estimate: '3 min',
+    questions: 7,
+    estimate: '5 min',
   },
   {
     id: 'blinds',
@@ -50,8 +50,8 @@ const PHASES = [
     description: 'SB aggression and BB defense from the toughest seats.',
     icon: '🛡️',
     href: '/learn/positions?group=blinds',
-    questions: 3,
-    estimate: '3 min',
+    questions: 7,
+    estimate: '5 min',
   },
 ];
 
