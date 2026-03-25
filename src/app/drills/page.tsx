@@ -3,7 +3,9 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { MODULES } from '@/lib/data/categories';
+import { Card, Button, Icon, Badge } from '@/components/ui';
 
+const DRILL_SIZES = [10, 15, 25, 50];
 const DEFAULT_DRILL_SIZE = 15;
 
 export default function DrillsPage() {
@@ -11,6 +13,7 @@ export default function DrillsPage() {
   const sortedModules = [...MODULES]
     .filter(m => m.spotPoolSize > 0)
     .sort((a, b) => a.curriculumOrder - b.curriculumOrder);
+
   const [drillSize, setDrillSize] = useState(DEFAULT_DRILL_SIZE);
 
   useEffect(() => {
@@ -23,68 +26,141 @@ export default function DrillsPage() {
     } catch { /* noop */ }
   }, []);
 
+  const handleSizeChange = (size: number) => {
+    setDrillSize(size);
+    try { localStorage.setItem('poker-trainer-drill-size', String(size)); } catch { /* noop */ }
+  };
+
   const startDrill = (moduleId: string) => {
     router.push(`/drills/session?module=${moduleId}&count=${drillSize}`);
   };
 
   return (
     <div style={{ padding: '20px 16px 100px', maxWidth: 480, margin: '0 auto' }}>
-      <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 4 }}>Drills</h1>
-      <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 24 }}>
-        Practice specific spots to fix your leaks. Each drill runs <strong>{drillSize} hands</strong>.
-        <br />
-        <span
-          onClick={() => router.push('/settings')}
-          style={{ color: 'var(--color-accent)', cursor: 'pointer', fontSize: 13 }}
-        >
-          Change in Settings
-        </span>
+      <h1 style={{
+        fontSize: 'var(--text-xl)',
+        fontWeight: 800,
+        marginBottom: 4,
+        fontFamily: 'var(--font-display)',
+        color: 'var(--on-surface)',
+      }}>
+        Drills
+      </h1>
+      <p style={{ color: 'var(--muted)', fontSize: 'var(--text-sm)', marginBottom: 20, fontFamily: 'var(--font-body)' }}>
+        Practice specific spots to fix your leaks.
       </p>
 
-      {/* Quick drill */}
-      <div className="card" style={{ marginBottom: 20, textAlign: 'center', padding: 24 }}>
-        <div style={{ fontSize: 32, marginBottom: 8 }}>&#9889;</div>
-        <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 6 }}>Quick Drill</h2>
-        <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 16 }}>
-          A mixed set of {drillSize} spots across all categories.
-        </p>
-        <button
-          className="btn-primary"
-          onClick={() => startDrill('mixed')}
-          style={{ width: '100%' }}
-        >
-          Start Quick Drill
-        </button>
-      </div>
-
-      {/* Module drills */}
-      <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>By Module</h2>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {sortedModules.map((mod) => (
+      {/* Drill size stepper — inline */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 'var(--space-2)',
+        marginBottom: 20,
+        fontFamily: 'var(--font-body)',
+      }}>
+        <span style={{ fontSize: 'var(--text-sm)', color: 'var(--on-surface-variant)', fontWeight: 600 }}>
+          Hands:
+        </span>
+        {DRILL_SIZES.map(size => (
           <button
-            key={mod.id}
-            className="card"
-            onClick={() => startDrill(mod.id)}
+            key={size}
+            onClick={() => handleSizeChange(size)}
             style={{
-              padding: 16,
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
+              padding: '6px 14px',
+              borderRadius: 'var(--radius-full)',
+              fontSize: 'var(--text-sm)',
+              fontWeight: 700,
+              fontFamily: 'var(--font-body)',
+              border: 'none',
               cursor: 'pointer',
-              textAlign: 'left',
-              width: '100%',
-              border: '1px solid var(--border-card)',
-              transition: 'border-color 0.2s',
+              background: size === drillSize ? 'var(--primary)' : 'var(--surface-high)',
+              color: size === drillSize ? 'var(--surface)' : 'var(--on-surface-variant)',
+              transition: 'all var(--duration-fast) var(--ease-out)',
+              minHeight: 36,
             }}
           >
-            <div>
-              <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 2 }}>{mod.displayName}</div>
-              <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-                {mod.spotPoolSize}+ hands &middot; {mod.positions.join(', ')}
-              </div>
-            </div>
-            <span style={{ fontSize: 20, color: 'var(--text-muted)' }}>&#8250;</span>
+            {size}
           </button>
+        ))}
+      </div>
+
+      {/* Quick Mix card */}
+      <Card elevation="floating" style={{
+        marginBottom: 24,
+        textAlign: 'center',
+        padding: 'var(--space-6)',
+        background: 'linear-gradient(145deg, var(--surface-container) 0%, var(--surface-high) 100%)',
+      }}>
+        <div style={{ marginBottom: 'var(--space-3)' }}>
+          <Icon name="zap" size={32} color="var(--gold)" />
+        </div>
+        <h2 style={{
+          fontSize: 'var(--text-lg)',
+          fontWeight: 700,
+          marginBottom: 6,
+          fontFamily: 'var(--font-display)',
+          color: 'var(--on-surface)',
+        }}>
+          Quick Mix
+        </h2>
+        <p style={{ color: 'var(--muted)', fontSize: 'var(--text-sm)', marginBottom: 16, fontFamily: 'var(--font-body)' }}>
+          {drillSize} mixed spots across all categories.
+        </p>
+        <Button variant="primary" block onClick={() => startDrill('mixed')}>
+          Start Quick Drill
+        </Button>
+      </Card>
+
+      {/* Module drills */}
+      <h2 style={{
+        fontSize: 'var(--text-base)',
+        fontWeight: 700,
+        marginBottom: 12,
+        color: 'var(--on-surface)',
+        fontFamily: 'var(--font-body)',
+      }}>
+        By Category
+      </h2>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {sortedModules.map((mod) => (
+          <Card
+            key={mod.id}
+            elevation="raised"
+            style={{
+              padding: 16,
+              cursor: 'pointer',
+              transition: 'background var(--duration-fast) var(--ease-out)',
+            }}
+            onClick={() => startDrill(mod.id)}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{
+                  fontSize: 'var(--text-base)',
+                  fontWeight: 600,
+                  marginBottom: 4,
+                  color: 'var(--on-surface)',
+                  fontFamily: 'var(--font-body)',
+                }}>
+                  {mod.displayName}
+                </div>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 'var(--space-2)',
+                  flexWrap: 'wrap',
+                }}>
+                  <Badge variant="neutral" size="sm">
+                    {mod.spotPoolSize}+ hands
+                  </Badge>
+                  <span style={{ fontSize: 'var(--text-xs)', color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>
+                    {mod.positions.join(', ')}
+                  </span>
+                </div>
+              </div>
+              <Icon name="chevron-right" size={20} color="var(--muted)" />
+            </div>
+          </Card>
         ))}
       </div>
     </div>
