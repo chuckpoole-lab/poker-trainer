@@ -2,6 +2,9 @@
 
 import './globals.css';
 import { useRouter, usePathname } from 'next/navigation';
+import { AuthProvider, useAuth } from '@/lib/services/auth-context';
+import SignInScreen from '@/components/auth/SignInScreen';
+import UserMenu from '@/components/auth/UserMenu';
 
 const NAV_ITEMS = [
   { href: '/', label: '♠', title: 'Home' },
@@ -63,6 +66,47 @@ function BottomNav() {
   );
 }
 
+/** Auth gate — shows sign-in screen until user signs in or chooses guest */
+function AuthGate({ children }: { children: React.ReactNode }) {
+  const { user, isGuest, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div style={{
+        minHeight: '100dvh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'var(--surface)',
+      }}>
+        <p style={{ color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>Loading...</p>
+      </div>
+    );
+  }
+
+  // Not signed in and not a guest — show sign-in screen
+  if (!user && !isGuest) {
+    return <SignInScreen />;
+  }
+
+  return <>{children}</>;
+}
+
+/** Top bar with user menu */
+function TopBar() {
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      right: 0,
+      padding: '10px 16px',
+      zIndex: 101,
+    }}>
+      <UserMenu />
+    </div>
+  );
+}
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
@@ -71,10 +115,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <title>Poker Trainer</title>
       </head>
       <body>
-        <main style={{ paddingBottom: 72, minHeight: '100vh' }}>
-          {children}
-        </main>
-        <BottomNav />
+        <AuthProvider>
+          <AuthGate>
+            <TopBar />
+            <main style={{ paddingBottom: 72, minHeight: '100vh' }}>
+              {children}
+            </main>
+            <BottomNav />
+          </AuthGate>
+        </AuthProvider>
       </body>
     </html>
   );

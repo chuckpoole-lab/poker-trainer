@@ -6,6 +6,8 @@ import { ASSESSMENT_SPOTS } from '@/lib/data/assessment-spots';
 import { LEAK_CATEGORIES } from '@/lib/data/categories';
 import { calculateLeakScores } from '@/lib/services/scoring';
 import { saveAssessmentResult } from '@/lib/services/progress-storage';
+import { saveAssessmentToCloud } from '@/lib/services/cloud-storage';
+import { useAuth } from '@/lib/services/auth-context';
 import { ScoreBand } from '@/lib/types';
 import type { AssessmentResponse, LeakScore } from '@/lib/types';
 import { DonutChart, Card, Badge, ProgressBar, Button } from '@/components/ui';
@@ -42,6 +44,7 @@ function sortBySeverity(scores: LeakScore[]): LeakScore[] {
 function ResultsContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { user } = useAuth();
   const raw = searchParams.get('data');
   const savedRef = useRef(false);
 
@@ -73,6 +76,10 @@ function ResultsContent() {
   if (responses.length > 0 && !savedRef.current) {
     savedRef.current = true;
     saveAssessmentResult(responses, leakScores, overall);
+    // Also save to cloud if signed in
+    if (user) {
+      saveAssessmentToCloud(user.id, responses, leakScores, overall);
+    }
   }
 
   const donutColor = overall >= 80

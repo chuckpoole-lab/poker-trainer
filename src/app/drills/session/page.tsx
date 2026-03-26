@@ -9,6 +9,8 @@ import { SimplifiedAction, ResultClass, ACTION_LABELS, LeakCategoryId } from '@/
 import { scoreResponse } from '@/lib/services/scoring';
 import { generateDrillSet, type GeneratedSpot } from '@/lib/services/spot-generator';
 import { saveDrillResult } from '@/lib/services/progress-storage';
+import { saveDrillToCloud } from '@/lib/services/cloud-storage';
+import { useAuth } from '@/lib/services/auth-context';
 import { getActionExplanation } from '@/lib/data/action-explanations';
 
 const DEFAULT_DRILL_SIZE = 15;
@@ -17,6 +19,7 @@ const MAX_DRILL_SIZE = 100;
 function DrillSessionContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { user } = useAuth();
   const moduleId = searchParams.get('module') ?? 'mixed';
 
   const drillSize = useMemo(() => {
@@ -82,6 +85,10 @@ function DrillSessionContent() {
     if (idx + 1 >= drillSet.length && !savedRef.current) {
       savedRef.current = true;
       saveDrillResult(moduleId, newCorrect, newTotal);
+      // Also save to cloud if signed in
+      if (user) {
+        saveDrillToCloud(user.id, moduleId, newCorrect, newTotal);
+      }
     }
   }, [spot, total, correct, idx, drillSet.length, moduleId]);
 
