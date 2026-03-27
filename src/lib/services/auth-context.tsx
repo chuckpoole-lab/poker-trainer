@@ -54,8 +54,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Check if user previously chose guest mode
     const isGuest = typeof window !== 'undefined' && localStorage.getItem('poker-trainer-guest') === 'true';
 
+    let resolved = false;
+
+    // Safety timeout — if getSession hangs (Supabase lock issue), fall back after 4s
+    const timeout = setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        setState({
+          user: null,
+          profile: null,
+          session: null,
+          isGuest,
+          loading: false,
+        });
+      }
+    }, 4000);
+
     // Get current session
     supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (resolved) return; // timeout already fired
+      resolved = true;
+      clearTimeout(timeout);
+
       if (session?.user) {
         const profile = await fetchProfile(session.user.id);
         setState({
@@ -102,7 +122,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      clearTimeout(timeout);
+      subscription.unsubscribe();
+    };
   }, [fetchProfile]);
 
   const signInWithGoogle = useCallback(async () => {
