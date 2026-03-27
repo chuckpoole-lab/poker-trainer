@@ -74,6 +74,15 @@ create policy "Admins can view all profiles"
     )
   );
 
+create policy "Admins can update all profiles"
+  on public.profiles for update
+  using (
+    exists (
+      select 1 from public.profiles
+      where id = auth.uid() and is_admin = true
+    )
+  );
+
 -- Assessment results: users see own; admins see all
 create policy "Users can view own assessments"
   on public.assessment_results for select

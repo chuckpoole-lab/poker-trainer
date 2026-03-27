@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/services/auth-context';
-import { getAllUsersStats } from '@/lib/services/cloud-storage';
+import { getAllUsersStats, toggleUserAdmin } from '@/lib/services/cloud-storage';
 import { Card, Badge, Button } from '@/components/ui';
 
 interface UserStat {
@@ -66,6 +66,14 @@ export default function AdminDashboard() {
         </Button>
       </div>
     );
+  }
+
+  async function handleToggleAdmin(targetId: string, currentlyAdmin: boolean) {
+    const newStatus = !currentlyAdmin;
+    const success = await toggleUserAdmin(targetId, newStatus);
+    if (success) {
+      setUsers(prev => prev.map(u => u.id === targetId ? { ...u, is_admin: newStatus } : u));
+    }
   }
 
   const totalUsers = users.length;
@@ -168,6 +176,25 @@ export default function AdminDashboard() {
                       {u.email} &middot; Last active {formatDate(u.lastActive)}
                     </div>
                   </div>
+                  {u.id !== user?.id && (
+                    <button
+                      onClick={() => handleToggleAdmin(u.id, u.is_admin)}
+                      style={{
+                        padding: '6px 12px',
+                        fontSize: 'var(--text-xs)',
+                        fontFamily: 'var(--font-body)',
+                        fontWeight: 600,
+                        border: '1px solid var(--border)',
+                        borderRadius: 'var(--radius-md)',
+                        background: u.is_admin ? 'var(--color-leak)' : 'var(--primary)',
+                        color: 'var(--surface)',
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {u.is_admin ? 'Remove Admin' : 'Make Admin'}
+                    </button>
+                  )}
                 </div>
 
                 {/* Stats row */}

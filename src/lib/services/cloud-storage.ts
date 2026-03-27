@@ -198,6 +198,21 @@ export async function getAllUsersStats() {
   return usersWithStats;
 }
 
+// ============ ADMIN: TOGGLE ADMIN STATUS ============
+
+export async function toggleUserAdmin(targetUserId: string, isAdmin: boolean): Promise<boolean> {
+  const { error } = await supabase
+    .from('profiles')
+    .update({ is_admin: isAdmin })
+    .eq('id', targetUserId);
+
+  if (error) {
+    console.error('Failed to toggle admin:', error.message);
+    return false;
+  }
+  return true;
+}
+
 // ============ GUEST DATA MIGRATION ============
 
 export async function migrateGuestDataToCloud(userId: string): Promise<void> {
