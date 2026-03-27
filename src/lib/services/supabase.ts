@@ -8,5 +8,11 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     persistSession: true,
     detectSessionInUrl: true,
     flowType: 'implicit',
+    storageKey: 'sb-auth',
+    // Bypass navigator.locks to avoid orphan-lock hangs in static exports
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    lock: (async (_name: string, _acquireTimeout: number, fn: () => Promise<any>) => {
+      return fn();
+    }) as any,
   },
 });
