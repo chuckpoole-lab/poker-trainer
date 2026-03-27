@@ -19,6 +19,11 @@ const NAV_ITEMS = [
 function BottomNav() {
   const router = useRouter();
   const pathname = usePathname();
+  const { profile } = useAuth();
+
+  const navItems = profile?.is_admin
+    ? [...NAV_ITEMS, { href: '/admin', label: '👑', title: 'Coach' }]
+    : NAV_ITEMS;
 
   return (
     <nav style={{
@@ -33,7 +38,7 @@ function BottomNav() {
       padding: '8px 0 env(safe-area-inset-bottom, 8px)',
       zIndex: 100,
     }}>
-      {NAV_ITEMS.map((item) => {
+      {navItems.map((item) => {
         const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
         return (
           <button
