@@ -1,9 +1,12 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import LeagueBrand from '@/components/ui/LeagueBrand';
+import { useLeague } from '@/lib/services/league-context';
 
 export default function WelcomePage() {
   const router = useRouter();
+  const { league, isWhiteLabel } = useLeague();
 
   return (
     <div style={{
@@ -16,40 +19,9 @@ export default function WelcomePage() {
       gap: 32,
       padding: '40px 0',
     }}>
-      {/* Logo area */}
+      {/* League / default brand block */}
       <div style={{ marginBottom: 8 }}>
-        <div style={{
-          width: 72,
-          height: 72,
-          borderRadius: 16,
-          background: 'linear-gradient(135deg, #1e6b43 0%, #0d3321 100%)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          margin: '0 auto 24px',
-          border: '2px solid rgba(56, 189, 248, 0.3)',
-        }}>
-          <span style={{ fontSize: 36, color: '#1a1a1a' }}>&#9824;</span>
-        </div>
-        <h1 style={{
-          fontSize: 32,
-          fontWeight: 800,
-          letterSpacing: '-0.02em',
-          margin: 0,
-          color: '#e8ecf1',
-        }}>
-          Poker Trainer
-        </h1>
-        <p style={{
-          fontSize: 14,
-          color: '#64748b',
-          marginTop: 4,
-          letterSpacing: '0.08em',
-          textTransform: 'uppercase',
-          fontWeight: 600,
-        }}>
-          MTT Decision Training
-        </p>
+        <LeagueBrand size={72} />
       </div>
 
       {/* Value proposition */}
@@ -60,7 +32,8 @@ export default function WelcomePage() {
           lineHeight: 1.6,
           margin: 0,
         }}>
-          Learn positions, build strategy, and train the decisions that matter most in live tournament poker.
+          {league.welcomeText ||
+            'Learn positions, build strategy, and train the decisions that matter most in live tournament poker.'}
         </p>
       </div>
 
@@ -107,11 +80,27 @@ export default function WelcomePage() {
       {/* Copyright */}
       <div style={{ marginTop: 24, textAlign: 'center', lineHeight: 1.8 }}>
         <p style={{ fontSize: 12, color: '#475569', margin: 0 }}>
-          &copy; {new Date().getFullYear()}{' '}Chuck Poole &amp; Chris Thatcher. All rights reserved.
+          {league.copyright || (
+            <>&copy; {new Date().getFullYear()} Chuck Poole &amp; Chris Thatcher. All rights reserved.</>
+          )}
         </p>
-        <p style={{ fontSize: 11, color: '#3b4555', margin: 0 }}>
-          Developed by White Rabbit Advisory Group
-        </p>
+        {!isWhiteLabel && (
+          <p style={{ fontSize: 11, color: '#3b4555', margin: 0 }}>
+            Developed by White Rabbit Advisory Group
+          </p>
+        )}
+        {isWhiteLabel && league.websiteUrl && (
+          <p style={{ fontSize: 11, color: '#3b4555', margin: 0 }}>
+            <a
+              href={league.websiteUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: league.colors.primary, textDecoration: 'none' }}
+            >
+              Visit {league.name} &rarr;
+            </a>
+          </p>
+        )}
       </div>
     </div>
   );

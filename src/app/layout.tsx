@@ -3,6 +3,7 @@
 import './globals.css';
 import { useRouter, usePathname } from 'next/navigation';
 import { AuthProvider, useAuth } from '@/lib/services/auth-context';
+import { LeagueProvider, useLeague } from '@/lib/services/league-context';
 import SignInScreen from '@/components/auth/SignInScreen';
 import UserMenu from '@/components/auth/UserMenu';
 
@@ -112,6 +113,12 @@ function TopBar() {
   );
 }
 
+/** Dynamic page title based on active league */
+function LeagueTitle() {
+  const { league } = useLeague();
+  return <title>{league.name}</title>;
+}
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
@@ -120,15 +127,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <title>Poker Trainer</title>
       </head>
       <body>
-        <AuthProvider>
-          <AuthGate>
-            <TopBar />
-            <main style={{ paddingBottom: 72, minHeight: '100vh' }}>
-              {children}
-            </main>
-            <BottomNav />
-          </AuthGate>
-        </AuthProvider>
+        <LeagueProvider>
+          <AuthProvider>
+            <LeagueTitle />
+            <AuthGate>
+              <TopBar />
+              <main style={{ paddingBottom: 72, minHeight: '100vh' }}>
+                {children}
+              </main>
+              <BottomNav />
+            </AuthGate>
+          </AuthProvider>
+        </LeagueProvider>
       </body>
     </html>
   );
