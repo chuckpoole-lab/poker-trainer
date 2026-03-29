@@ -11,6 +11,7 @@ import {
   uploadLeagueLogo,
   type LeagueRow,
 } from '@/lib/services/league-storage';
+import { scrapeWebsiteBrand, dimColor } from '@/lib/services/brand-scraper';
 
 /* ═══════════════════════════════════════════════════════════════════
    LeagueManager — Admin component for managing league partners
@@ -107,6 +108,8 @@ export default function LeagueManager() {
   const [saving, setSaving] = useState(false);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [scraping, setScraping] = useState(false);
+  const [scrapedColors, setScrapedColors] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -139,6 +142,54 @@ export default function LeagueManager() {
     setIsNew(false);
     setLogoFile(null);
     setLogoPreview(null);
+    setScrapedColors([]);
+  }
+
+  async function handleScrapeWebsite() {
+    if (!editing?.website_url) return;
+    setScraping(true);
+    setScrapedColors([]);
+    try {
+      const brand = await scrapeWebsiteBrand(editing.website_url);
+
+      const updates: Partial<LeagueRow> = {};
+
+      // Auto-fill name if empty
+      if (!editing.name && brand.siteName) {
+        updates.name = brand.siteName;
+      }
+
+      // Auto-fill slug if empty
+      if (!editing.slug && brand.siteName) {
+        updates.slug = brand.siteName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 20);
+      }
+
+      // Set logo preview
+      if (brand.logoUrl) {
+        setLogoPreview(brand.logoUrl);
+        updates.logo_url = brand.logoUrl;
+      }
+
+      // Set first color as primary if found
+      if (brand.colors.length > 0) {
+        updates.color_primary = brand.colors[0];
+        updates.color_primary_dim = dimColor(brand.colors[0]);
+        setScrapedColors(brand.colors);
+      }
+      if (brand.colors.length > 1) {
+        updates.color_gold = brand.colors[1];
+      }
+
+      // Set description as welcome text if empty
+      if (!editing.welcome_text && brand.description) {
+        updates.welcome_text = brand.description;
+      }
+
+      setEditing(prev => prev ? { ...prev, ...updates } : null);
+    } catch (err) {
+      console.error('Scrape failed:', err);
+    }
+    setScraping(false);
   }
 
   function handleLogoSelect(e: React.ChangeEvent<HTMLInputElement>) {
@@ -226,6 +277,68 @@ export default function LeagueManager() {
             Cancel
           </button>
         </div>
+
+        {/* Fetch from website */}
+        <Card elevation="raised" style={{ padding: 16 }}>
+          <label style={{ fontSize: 'var(--text-xs)', color: 'var(--muted)', display: 'block', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>
+            Auto-Fill from Website
+          </label>
+          <p style={{ fontSize: 'var(--text-xs)', color: 'var(--muted)', marginBottom: 10 }}>
+            Enter the league&apos;s website URL and we&apos;ll pull their logo and brand colors automatically.
+          </p>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input
+              type="text"
+              value={editing.website_url || ''}
+              onChange={(e) => updateField('website_url', e.target.value)}
+              placeholder="https://acecitypokerleague.com"
+              style={{
+                flex: 1, padding: '8px 12px', fontSize: 'var(--text-sm)',
+                background: 'var(--surface-high)', color: 'var(--on-surface)',
+                border: '1px solid var(--outline-variant)', borderRadius: 'var(--radius-sm)',
+                fontFamily: 'var(--font-body)',
+              }}
+            />
+            <button
+              onClick={handleScrapeWebsite}
+              disabled={scraping || !editing.website_url}
+              style={{
+                padding: '8px 16px', fontSize: 'var(--text-sm)', fontWeight: 700,
+                background: scraping ? 'var(--surface-high)' : 'var(--primary)',
+                color: scraping ? 'var(--muted)' : 'var(--surface)',
+                border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                whiteSpace: 'nowrap', fontFamily: 'var(--font-body)',
+                opacity: (!editing.website_url) ? 0.5 : 1,
+              }}
+            >
+              {scraping ? 'Fetching...' : 'Fetch Brand'}
+            </button>
+          </div>
+          {scrapedColors.length > 0 && (
+            <div style={{ marginTop: 10 }}>
+              <label style={{ fontSize: 'var(--text-xs)', color: 'var(--muted)', display: 'block', marginBottom: 6 }}>
+                Colors found — click to use as primary:
+              </label>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {scrapedColors.map((color, i) => (
+                  <button
+                    key={i}
+                    onClick={() => {
+                      updateField('color_primary', color);
+                      updateField('color_primary_dim', dimColor(color));
+                    }}
+                    style={{
+                      width: 36, height: 36, borderRadius: 'var(--radius-sm)',
+                      background: color, border: editing.color_primary === color ? '3px solid white' : '1px solid var(--outline-variant)',
+                      cursor: 'pointer', position: 'relative',
+                    }}
+                    title={color}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+        </Card>
 
         {/* Logo upload */}
         <Card elevation="raised" style={{ padding: 16 }}>
