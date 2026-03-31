@@ -9,9 +9,9 @@ import UserMenu from '@/components/auth/UserMenu';
 
 const NAV_ITEMS = [
   { href: '/', label: '♠', title: 'Home' },
+  { href: '/play', label: '🃏', title: 'Play' },
   { href: '/learn', label: '📖', title: 'Learn' },
   { href: '/assessment', label: '🎯', title: 'Assess' },
-  { href: '/study-plan', label: '📋', title: 'Plan' },
   { href: '/drills', label: '⚡', title: 'Drills' },
   { href: '/progress', label: '📊', title: 'Progress' },
   { href: '/settings', label: '⚙️', title: 'Settings' },

@@ -10,6 +10,9 @@ export interface Profile {
   email: string | null;
   avatar_url: string | null;
   is_admin: boolean;
+  preferred_mode: string | null;
+  poker_iq: number;
+  league_slug: string | null;
 }
 
 interface AuthState {
