@@ -14,6 +14,8 @@ export interface FeedbackData {
   q4: number; // Would recommend
   q5: number; // Come back tomorrow
   freeform: string;
+  name: string;
+  email: string;
   submittedAt: string;
 }
 
@@ -28,6 +30,8 @@ const QUESTIONS = [
 export function FeedbackSurvey({ onClose, onSubmit }: FeedbackProps) {
   const [ratings, setRatings] = useState<Record<string, number>>({});
   const [freeform, setFreeform] = useState('');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
   const [submitted, setSubmitted] = useState(false);
 
   const allRated = QUESTIONS.every(q => ratings[q.id] !== undefined);
@@ -37,6 +41,8 @@ export function FeedbackSurvey({ onClose, onSubmit }: FeedbackProps) {
       q1: ratings.q1 || 0, q2: ratings.q2 || 0, q3: ratings.q3 || 0,
       q4: ratings.q4 || 0, q5: ratings.q5 || 0,
       freeform: freeform.trim(),
+      name: name.trim(),
+      email: email.trim(),
       submittedAt: new Date().toISOString(),
     };
     onSubmit(data);
@@ -81,7 +87,7 @@ export function FeedbackSurvey({ onClose, onSubmit }: FeedbackProps) {
         <div style={{ textAlign: 'center', marginBottom: 20 }}>
           <div style={{ fontSize: 36, marginBottom: 8 }}>💬</div>
           <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--on-surface, #0f172a)' }}>Quick Feedback</div>
-          <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>Rate each item 1-5. Takes about 30 seconds.</div>
+          <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>Rate each item 1 (worst) to 5 (best). Takes about 30 seconds.</div>
         </div>
 
         {QUESTIONS.map((q) => (
@@ -122,6 +128,42 @@ export function FeedbackSurvey({ onClose, onSubmit }: FeedbackProps) {
               background: 'var(--surface-container, #fff)', color: 'var(--on-surface, #0f172a)',
               fontFamily: 'var(--font-body, inherit)', resize: 'vertical',
               outline: 'none',
+            }}
+          />
+        </div>
+
+        {/* Optional contact info */}
+        <div style={{
+          background: 'var(--surface-container, #f8fafc)', border: '1px solid var(--outline-variant, #e2e8f0)',
+          borderRadius: 12, padding: '14px 16px', marginBottom: 20,
+        }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--on-surface, #0f172a)', marginBottom: 4 }}>
+            Want to stay in the loop? (optional)
+          </div>
+          <div style={{ fontSize: 12, color: '#64748b', marginBottom: 12, lineHeight: 1.5 }}>
+            Leave your name and email to get notified about updates and early access when we launch.
+          </div>
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Your name"
+            style={{
+              width: '100%', padding: '10px 14px', fontSize: 14, borderRadius: 10,
+              border: '2px solid var(--outline-variant, #e2e8f0)',
+              background: 'var(--surface-container, #fff)', color: 'var(--on-surface, #0f172a)',
+              fontFamily: 'var(--font-body, inherit)', outline: 'none', marginBottom: 8,
+            }}
+          />
+          <input
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="your@email.com"
+            type="email"
+            style={{
+              width: '100%', padding: '10px 14px', fontSize: 14, borderRadius: 10,
+              border: '2px solid var(--outline-variant, #e2e8f0)',
+              background: 'var(--surface-container, #fff)', color: 'var(--on-surface, #0f172a)',
+              fontFamily: 'var(--font-body, inherit)', outline: 'none',
             }}
           />
         </div>
