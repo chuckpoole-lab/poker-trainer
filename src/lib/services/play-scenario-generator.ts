@@ -100,7 +100,25 @@ function buildSituation(spot: GeneratedSpot): string {
     const openerMatch = history.match(/^(\w+)_opens/);
     const openerKey = openerMatch ? openerMatch[1] : 'unknown';
     const openerName = POSITION_DISPLAY[openerKey] || openerKey.toUpperCase();
-    return `The ${openerName} raises to 2.5x. Everyone else folds to you.`;
+    const heroPos = template.position;
+
+    // Determine if anyone could have folded between opener and hero
+    const seatOrder = ['utg', 'utg1', 'mp', 'lj', 'hj', 'co', 'btn', 'sb', 'bb'];
+    const openerIdx = seatOrder.indexOf(openerKey);
+    const heroIdx = seatOrder.indexOf(heroPos);
+    const gap = heroIdx - openerIdx;
+
+    if (gap === 1) {
+      // Adjacent seats — nobody in between to fold
+      return `The ${openerName} raises to 2.5x.`;
+    } else if (gap === 2) {
+      return `The ${openerName} raises to 2.5x. The player between you folds.`;
+    } else if (gap > 2) {
+      return `The ${openerName} raises to 2.5x. Everyone between you folds.`;
+    } else {
+      // Hero is before opener in seat order (e.g., BB facing BTN open)
+      return `The ${openerName} raises to 2.5x. Everyone else folds.`;
+    }
   }
 
   if (template.position === Position.SB) {

@@ -52,9 +52,23 @@ export function explainJamUnopened(hand: string, pos: Position, stackBb: number)
 
 // ======= FACING OPEN EXPLANATIONS =======
 
+// Helper to describe the action between opener and hero
+function facingOpenContext(heroPos: Position, openerPos: Position): string {
+  const seatOrder = [Position.UTG, Position.UTG1, Position.MP, Position.LJ, Position.HJ, Position.CO, Position.BTN, Position.SB, Position.BB];
+  const openerIdx = seatOrder.indexOf(openerPos);
+  const heroIdx = seatOrder.indexOf(heroPos);
+  const gap = heroIdx - openerIdx;
+
+  if (gap === 1) return `${posLabel(openerPos)} raised and the action is on you in the ${posLabel(heroPos)}`;
+  if (gap === 2) return `${posLabel(openerPos)} raised, one player folded, and the action is on you in the ${posLabel(heroPos)}`;
+  if (gap > 2) return `${posLabel(openerPos)} raised, everyone between you folded, and the action is on you in the ${posLabel(heroPos)}`;
+  return `${posLabel(openerPos)} raised and the action is on you in the ${posLabel(heroPos)}`;
+}
+
 export function explainJamVsOpen(hand: string, heroPos: Position, openerPos: Position, stackBb: number): Explanation {
+  const ctx = facingOpenContext(heroPos, openerPos);
   return {
-    plain: `${posLabel(openerPos)} raised and everyone folded to you in the ${posLabel(heroPos)} with ${hand} at ${stackBb}bb. Going all-in is the best play. ${hand} is strong enough to stand up against ${posLabel(openerPos)}'s opening range, and at ${stackBb}bb you get maximum value from fold equity.`,
+    plain: `${ctx} with ${hand} at ${stackBb}bb. Going all-in is the best play. ${hand} is strong enough to stand up against ${posLabel(openerPos)}'s opening range, and at ${stackBb}bb you get maximum value from fold equity.`,
     poker: `${hand} in the ${posLabel(heroPos)} at ${stackBb}bb facing a ${posLabel(openerPos)} open is a 3-bet jam. The stack-to-pot ratio makes flatting awkward. ${hand} has strong equity against the ${posLabel(openerPos)} opening range and jamming maximizes fold equity.`,
     pattern: `Facing a ${posLabel(openerPos)} open at ${stackBb}bb from ${posLabel(heroPos)}: 3-bet jam with premium hands and strong suited aces. ${hand} falls into this category. Do not flat call with short stacks when you can leverage fold equity.`,
   };
@@ -62,17 +76,19 @@ export function explainJamVsOpen(hand: string, heroPos: Position, openerPos: Pos
 
 export function explainCallVsOpen(hand: string, heroPos: Position, openerPos: Position, stackBb: number): Explanation {
   const hasPosition = heroPos === Position.BTN || heroPos === Position.CO;
+  const ctx = facingOpenContext(heroPos, openerPos);
 
   return {
-    plain: `${posLabel(openerPos)} raised and everyone folded to you in the ${posLabel(heroPos)} with ${hand} at ${stackBb}bb. Calling is the best play. ${hasPosition ? 'You have position, so you get to act last on every street after the flop.' : 'You are getting a good price to see a flop.'} ${hand} has good playability and implied odds.`,
+    plain: `${ctx} with ${hand} at ${stackBb}bb. Calling is the best play. ${hasPosition ? 'You have position, so you get to act last on every street after the flop.' : 'You are getting a good price to see a flop.'} ${hand} has good playability and implied odds.`,
     poker: `${hand} in the ${posLabel(heroPos)} at ${stackBb}bb facing a ${posLabel(openerPos)} open is a call. ${hasPosition ? 'Positional advantage makes flatting profitable.' : 'The pot odds justify defending.'} ${hand} has good equity and playability against the opener's range but is not strong enough to 3-bet jam.`,
     pattern: `Facing a ${posLabel(openerPos)} open at ${stackBb}bb from ${posLabel(heroPos)}: call with hands that have good playability but are not premium. ${hand} fits this category. Save your 3-bet jams for stronger holdings.`,
   };
 }
 
 export function explainFoldVsOpen(hand: string, heroPos: Position, openerPos: Position, stackBb: number): Explanation {
+  const ctx = facingOpenContext(heroPos, openerPos);
   return {
-    plain: `${posLabel(openerPos)} raised and everyone folded to you in the ${posLabel(heroPos)} with ${hand} at ${stackBb}bb. Folding is the disciplined play. ${hand} might look decent, but against ${posLabel(openerPos)}'s raising range it is likely dominated. Getting involved with a weak hand against a raiser is a common way to leak chips.`,
+    plain: `${ctx} with ${hand} at ${stackBb}bb. Folding is the disciplined play. ${hand} might look decent, but against ${posLabel(openerPos)}'s raising range it is likely dominated. Getting involved with a weak hand against a raiser is a common way to leak chips.`,
     poker: `${hand} in the ${posLabel(heroPos)} at ${stackBb}bb facing a ${posLabel(openerPos)} open is a fold. The hand does not have sufficient equity against the opener's range to justify calling or 3-betting. Continuing here is a long-term chip burner.`,
     pattern: `Facing a ${posLabel(openerPos)} open at ${stackBb}bb from ${posLabel(heroPos)}: fold hands like ${hand} that are dominated by the raiser's range. Discipline in these spots preserves chips for more profitable situations.`,
   };
