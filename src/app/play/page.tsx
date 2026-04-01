@@ -449,7 +449,7 @@ export default function PlayPage() {
           {todayDone ? `You scored ${resultData?.score ?? 0}/5` : 'Play 5 hands'}
         </div>
         <div style={{ fontSize: 14, color: todayDone ? '#94a3b8' : 'rgba(255,255,255,0.8)' }}>
-          {todayDone ? 'Tap to see your results' : 'Same hands for everyone. Compare with your league.'}
+          {todayDone ? 'Come back tomorrow for your next challenge!' : 'Same hands for everyone. Compare with your league.'}
         </div>
       </button>
 
