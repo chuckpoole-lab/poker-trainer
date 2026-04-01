@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/services/auth-context';
 import {
@@ -15,58 +15,14 @@ import {
   type LeaderboardEntry,
 } from '@/lib/services/play-storage';
 import { getStreak } from '@/lib/services/cloud-storage';
+import {
+  generateDailyHands,
+  generateBonusHand,
+  type PlayHandScenario,
+} from '@/lib/services/play-scenario-generator';
 
 const SUIT_SYM: Record<string, string> = { h: '\u2665', d: '\u2666', c: '\u2663', s: '\u2660' };
-const SUIT_COL_LIGHT: Record<string, string> = { h: '#ef4444', d: '#ef4444', c: '#1e293b', s: '#1e293b' };
-
-const DAILY_HANDS = [
-  {
-    position: 'Button', stack: '15 blinds',
-    situation: 'Everyone folds to you. The blinds are tight.',
-    cards: [{ rank: 'K', suit: 's' }, { rank: '9', suit: 'h' }],
-    choices: ['Fold and wait', 'Raise to 2.5x', 'Shove all-in'],
-    correct: 2,
-    tipRight: "15 blinds on the button with everyone folding? K9 is a slam-dunk shove. You don't have enough chips to raise and fold. Just put it in.",
-    tipWrong: "With 15 blinds on the button, you're in shove-or-fold territory. K9 is way too strong to fold, and raising small commits you anyway. Shove and take the blinds.",
-  },
-  {
-    position: 'Big Blind', stack: '22 blinds',
-    situation: 'The cutoff raises to 2.5x. Everyone else folds.',
-    cards: [{ rank: 'A', suit: 'h' }, { rank: 'J', suit: 'd' }],
-    choices: ['Fold', 'Call', '3-bet to 8x'],
-    correct: 2,
-    tipRight: "AJ against a cutoff open? You've got a strong hand. 3-betting puts the pressure on them, not you.",
-    tipWrong: "AJ is too strong to fold and too strong to just call. 3-bet and take control of the hand.",
-  },
-  {
-    position: 'UTG', stack: '30 blinds',
-    situation: "You're first to act. Full table, 10 players.",
-    cards: [{ rank: '7', suit: 'c' }, { rank: '6', suit: 'c' }],
-    choices: ['Fold', 'Raise to 2.5x', 'Limp in'],
-    correct: 0,
-    tipRight: "From UTG with 8 players behind you, 76 suited is a clear fold. Save it for the button.",
-    tipWrong: "76 suited looks fun but UTG is the worst position at the table. With 8 players left to act, someone almost certainly has you crushed.",
-  },
-  {
-    position: 'Cutoff', stack: '18 blinds',
-    situation: 'Two limpers ahead of you. Button is aggressive.',
-    cards: [{ rank: 'A', suit: 's' }, { rank: 'T', suit: 's' }],
-    choices: ['Limp behind', 'Raise to 5x', 'Shove all-in'],
-    correct: 1,
-    tipRight: "AT suited with limpers? Raise to 5x to isolate. You want to play this heads-up, not multiway.",
-    tipWrong: "With limpers in front, raise bigger to thin the field. Limping lets everyone see a cheap flop, and AT plays best heads-up.",
-  },
-  {
-    position: 'Small Blind', stack: '10 blinds',
-    situation: 'Everyone folds to you. The big blind is a calling station.',
-    cards: [{ rank: 'Q', suit: 'd' }, { rank: '4', suit: 'h' }],
-    choices: ['Fold', 'Complete the blind', 'Shove all-in'],
-    correct: 2,
-    tipRight: "10 blinds in the small blind with a fold to you? Q4 isn't pretty but you shove any two cards here. The big blind can't call wide enough to make folding right.",
-    tipWrong: "With 10 blinds you're in shove-or-fold mode. Q4 has a queen, which is more than enough to jam into one player. Every fold here is money left on the table.",
-  },
-];
-
+const DAILY_COUNT = 5;
 
 // ── Playing card component ──
 function PlayingCard({ rank, suit, delay = 0 }: { rank: string; suit: string; delay?: number }) {
@@ -75,8 +31,7 @@ function PlayingCard({ rank, suit, delay = 0 }: { rank: string; suit: string; de
     <div style={{
       width: 64, height: 90, borderRadius: 12, display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center', gap: 2,
-      background: '#ffffff',
-      border: '2px solid #d1d5db',
+      background: '#ffffff', border: '2px solid #d1d5db',
       boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
       animation: `cardIn 0.3s ease ${delay}s both`,
     }}>
@@ -103,9 +58,11 @@ function StatPill({ icon, value, label, bg, borderColor, color }: {
 }
 
 // ── Daily Hands Game component ──
-function DailyHandsGame({ iq, streak, rank, onComplete }: {
-  iq: number; streak: number; rank: number;
+function DailyHandsGame({ hands, iq, streak, rank, isBonus, onComplete, onBonusResult }: {
+  hands: PlayHandScenario[]; iq: number; streak: number; rank: number;
+  isBonus: boolean;
   onComplete: (score: number, results: boolean[], newIq: number) => void;
+  onBonusResult: (correct: boolean) => void;
 }) {
   const [handIdx, setHandIdx] = useState(0);
   const [results, setResults] = useState<boolean[]>([]);
@@ -113,8 +70,9 @@ function DailyHandsGame({ iq, streak, rank, onComplete }: {
   const [showTip, setShowTip] = useState(false);
   const [currentIq, setCurrentIq] = useState(iq);
 
-  const hand = DAILY_HANDS[handIdx];
-  const isCorrect = selected === hand?.correct;
+  const hand = hands[handIdx];
+  if (!hand) return null;
+  const isCorrect = selected === hand.correct;
 
   const handleChoice = (idx: number) => {
     if (selected !== null) return;
@@ -123,13 +81,12 @@ function DailyHandsGame({ iq, streak, rank, onComplete }: {
     const correct = idx === hand.correct;
     setResults(prev => [...prev, correct]);
     if (correct) setCurrentIq(prev => prev + 2);
+    if (isBonus) onBonusResult(correct);
   };
 
   const nextHand = () => {
-    if (handIdx >= DAILY_HANDS.length - 1) {
-      const finalResults = [...results];
-      const finalScore = finalResults.filter(Boolean).length;
-      onComplete(finalScore, finalResults, currentIq);
+    if (handIdx >= hands.length - 1) {
+      onComplete(results.filter(Boolean).length, results, currentIq);
     } else {
       setHandIdx(prev => prev + 1);
       setSelected(null);
@@ -151,13 +108,15 @@ function DailyHandsGame({ iq, streak, rank, onComplete }: {
           <span style={{ fontSize: 16 }}>🔥</span>
           <span style={{ fontSize: 14, fontWeight: 800, color: '#92400e' }}>{streak}</span>
         </div>
-        <div style={{ background: '#ede9fe', border: '1.5px solid #8b5cf6', borderRadius: 20, padding: '5px 14px', fontSize: 13, fontWeight: 700, color: '#5b21b6' }}>IQ {currentIq}</div>
-        <div style={{ background: '#ecfdf5', border: '1.5px solid #10b981', borderRadius: 20, padding: '5px 14px', fontSize: 13, fontWeight: 700, color: '#065f46' }}>#{rank}</div>
+        <div style={{ background: isBonus ? '#fef3c7' : '#ede9fe', border: `1.5px solid ${isBonus ? '#f59e0b' : '#8b5cf6'}`, borderRadius: 20, padding: '5px 14px', fontSize: 13, fontWeight: 700, color: isBonus ? '#92400e' : '#5b21b6' }}>
+          {isBonus ? 'Bonus Round' : `IQ ${currentIq}`}
+        </div>
+        <div style={{ background: '#ecfdf5', border: '1.5px solid #10b981', borderRadius: 20, padding: '5px 14px', fontSize: 13, fontWeight: 700, color: '#065f46' }}>#{rank || '—'}</div>
       </div>
 
       {/* Progress bar */}
       <div style={{ display: 'flex', gap: 5, marginBottom: 18 }}>
-        {DAILY_HANDS.map((_, i) => (
+        {hands.map((_, i) => (
           <div key={i} style={{
             flex: 1, height: 6, borderRadius: 3,
             background: i < handIdx ? (results[i] ? '#10b981' : '#ef4444') : i === handIdx ? '#cbd5e1' : '#e5e7eb',
@@ -173,7 +132,7 @@ function DailyHandsGame({ iq, streak, rank, onComplete }: {
         boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
       }}>
         <div style={{ fontSize: 12, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 14 }}>
-          Hand {handIdx + 1} of {DAILY_HANDS.length}
+          {isBonus ? `Bonus Hand ${handIdx + 1}` : `Hand ${handIdx + 1} of ${hands.length}`}
         </div>
 
         <div style={{ fontSize: 15, color: 'var(--on-surface, #0f172a)', lineHeight: 1.7, marginBottom: 18 }}>
@@ -232,7 +191,7 @@ function DailyHandsGame({ iq, streak, rank, onComplete }: {
               border: `1.5px solid ${isCorrect ? '#a7f3d0' : '#fca5a5'}`,
             }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: isCorrect ? '#10b981' : '#ef4444', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>
-                {isCorrect ? 'Nailed it!' : 'Not quite — here\u2019s the play'}
+                {isCorrect ? 'Nailed it!' : 'Not quite \u2014 here\u2019s the play'}
               </div>
               <div style={{ fontSize: 14, color: isCorrect ? '#065f46' : '#991b1b', lineHeight: 1.6 }}>
                 {isCorrect ? hand.tipRight : hand.tipWrong}
@@ -244,7 +203,7 @@ function DailyHandsGame({ iq, streak, rank, onComplete }: {
               cursor: 'pointer', marginTop: 10, animation: 'pop 0.3s ease 0.2s both',
               fontFamily: 'var(--font-body, inherit)',
             }}>
-              {handIdx >= DAILY_HANDS.length - 1 ? 'See results' : 'Next hand \u2192'}
+              {handIdx >= hands.length - 1 ? (isBonus ? 'Done' : 'See results') : 'Next hand \u2192'}
             </button>
           </div>
         )}
@@ -254,9 +213,9 @@ function DailyHandsGame({ iq, streak, rank, onComplete }: {
 }
 
 // ── Results screen ──
-function ResultsScreen({ score, total, results, iq, iqChange, streak, rank, onBack }: {
+function ResultsScreen({ score, total, results, iq, iqChange, streak, rank, onBack, onKeepPlaying }: {
   score: number; total: number; results: boolean[]; iq: number; iqChange: number;
-  streak: number; rank: number; onBack: () => void;
+  streak: number; rank: number; onBack: () => void; onKeepPlaying: () => void;
 }) {
   const [copied, setCopied] = useState(false);
   const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -323,6 +282,13 @@ function ResultsScreen({ score, total, results, iq, iqChange, streak, rank, onBa
           fontFamily: 'var(--font-body, inherit)',
         }}>{copied ? 'Copied!' : 'Share result'}</button>
 
+        <button onClick={onKeepPlaying} style={{
+          width: '100%', padding: 14, fontSize: 15, fontWeight: 700,
+          background: 'transparent', color: '#10b981',
+          border: '2px solid #10b981', borderRadius: 12, cursor: 'pointer', marginBottom: 10,
+          fontFamily: 'var(--font-body, inherit)',
+        }}>Keep playing</button>
+
         <button onClick={onBack} style={{
           width: '100%', padding: 14, fontSize: 15, fontWeight: 600, background: 'transparent',
           color: '#64748b', border: '1.5px solid var(--outline-variant, #e2e8f0)', borderRadius: 12,
@@ -333,11 +299,12 @@ function ResultsScreen({ score, total, results, iq, iqChange, streak, rank, onBa
   );
 }
 
+
 // ── Main Play Page ──
 export default function PlayPage() {
   const router = useRouter();
   const { user, profile } = useAuth();
-  const [screen, setScreen] = useState<'home' | 'game' | 'results'>('home');
+  const [screen, setScreen] = useState<'home' | 'game' | 'results' | 'bonus'>('home');
   const [iq, setIq] = useState(100);
   const [streak, setStreak] = useState(0);
   const [rank, setRank] = useState(0);
@@ -345,6 +312,15 @@ export default function PlayPage() {
   const [todayDone, setTodayDone] = useState(false);
   const [resultData, setResultData] = useState<{ score: number; results: boolean[]; newIq: number } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [dailyHands, setDailyHands] = useState<PlayHandScenario[]>([]);
+  const [bonusHands, setBonusHands] = useState<PlayHandScenario[]>([]);
+  const [bonusCorrect, setBonusCorrect] = useState(0);
+  const [bonusTotal, setBonusTotal] = useState(0);
+
+  // Generate daily hands on mount
+  useEffect(() => {
+    setDailyHands(generateDailyHands());
+  }, []);
 
   // Load user data on mount
   useEffect(() => {
@@ -366,7 +342,6 @@ export default function PlayPage() {
           setResultData({ score: todayResult.score, results: todayResult.hand_results, newIq: todayResult.iq_after });
         }
       } else {
-        // Guest: load from localStorage
         const guestData = loadGuestData('play-stats', { iq: 100, streak: 0 });
         setIq(guestData.iq);
         setStreak(guestData.streak);
@@ -376,24 +351,58 @@ export default function PlayPage() {
     load();
   }, [user, profile]);
 
-  const handleComplete = useCallback(async (score: number, results: boolean[], newIq: number) => {
+  // Handle daily challenge completion
+  const handleDailyComplete = useCallback(async (score: number, results: boolean[], newIq: number) => {
     setResultData({ score, results, newIq });
     setIq(newIq);
     setScreen('results');
 
     if (user) {
-      const iqChange = newIq - iq;
-      await saveDailyChallengeResult(user.id, score, DAILY_HANDS.length, results, iq, newIq);
+      await saveDailyChallengeResult(user.id, score, DAILY_COUNT, results, iq, newIq);
       await checkAndAwardBadges(user.id);
       const newStreak = await getStreak(user.id);
       setStreak(newStreak.current_streak);
       setTodayDone(true);
     } else {
-      // Guest: save to localStorage
       saveGuestData('play-stats', { iq: newIq, streak: streak + 1 });
       setStreak(prev => prev + 1);
     }
   }, [user, iq, streak]);
+
+  // Handle "Keep Playing" — generate 5 bonus hands
+  const handleKeepPlaying = useCallback(() => {
+    const bonus = Array.from({ length: 5 }, () => generateBonusHand());
+    setBonusHands(bonus);
+    setBonusCorrect(0);
+    setBonusTotal(0);
+    setScreen('bonus');
+  }, []);
+
+  // Track bonus hand results
+  const handleBonusResult = useCallback((correct: boolean) => {
+    setBonusTotal(prev => prev + 1);
+    if (correct) {
+      setBonusCorrect(prev => prev + 1);
+      setIq(prev => {
+        const newIq = prev + 1;
+        if (user) { getUserPokerIQ(user.id).then(() => {}); }
+        return newIq;
+      });
+    }
+  }, [user]);
+
+  // Handle bonus round completion
+  const handleBonusComplete = useCallback(async (score: number, results: boolean[], newIq: number) => {
+    setIq(newIq);
+    if (user) {
+      const { updateUserPokerIQ } = await import('@/lib/services/play-storage');
+      await updateUserPokerIQ(user.id, newIq);
+    } else {
+      saveGuestData('play-stats', { iq: newIq, streak });
+    }
+    // Go back to home — bonus rounds don't have a results screen
+    setScreen('home');
+  }, [user, streak]);
 
   if (loading) {
     return (
@@ -403,20 +412,36 @@ export default function PlayPage() {
     );
   }
 
-  // Results screen
+  // Results screen (daily only)
   if (screen === 'results' && resultData) {
     return (
       <ResultsScreen
-        score={resultData.score} total={DAILY_HANDS.length} results={resultData.results}
+        score={resultData.score} total={DAILY_COUNT} results={resultData.results}
         iq={resultData.newIq} iqChange={resultData.score * 2}
         streak={streak} rank={rank} onBack={() => setScreen('home')}
+        onKeepPlaying={handleKeepPlaying}
       />
     );
   }
 
-  // Game screen
+  // Bonus game screen
+  if (screen === 'bonus') {
+    return (
+      <DailyHandsGame
+        hands={bonusHands} iq={iq} streak={streak} rank={rank}
+        isBonus={true} onComplete={handleBonusComplete} onBonusResult={handleBonusResult}
+      />
+    );
+  }
+
+  // Daily game screen
   if (screen === 'game') {
-    return <DailyHandsGame iq={iq} streak={streak} rank={rank} onComplete={handleComplete} />;
+    return (
+      <DailyHandsGame
+        hands={dailyHands} iq={iq} streak={streak} rank={rank}
+        isBonus={false} onComplete={handleDailyComplete} onBonusResult={() => {}}
+      />
+    );
   }
 
   // Home screen
@@ -446,11 +471,25 @@ export default function PlayPage() {
           {todayDone ? 'Completed today' : "Today\u2019s challenge"}
         </div>
         <div style={{ fontSize: 22, fontWeight: 800, color: todayDone ? '#64748b' : '#fff', marginBottom: 4 }}>
-          {todayDone ? `You scored ${resultData?.score ?? 0}/5` : 'Play 5 hands'}
+          {todayDone ? `You scored ${resultData?.score ?? 0}/${DAILY_COUNT}` : `Play ${DAILY_COUNT} hands`}
         </div>
         <div style={{ fontSize: 14, color: todayDone ? '#94a3b8' : 'rgba(255,255,255,0.8)' }}>
-          {todayDone ? 'Come back tomorrow for your next challenge!' : 'Same hands for everyone. Compare with your league.'}
+          {todayDone ? 'Tap to see your results' : 'Same hands for everyone. Compare with your league.'}
         </div>
+      </button>
+
+      {/* Keep Playing CTA — always available */}
+      <button onClick={handleKeepPlaying} style={{
+        width: '100%', padding: '18px 20px', borderRadius: 16, cursor: 'pointer',
+        background: 'var(--surface-container, #fff)', border: '1.5px solid var(--outline-variant, #e2e8f0)',
+        textAlign: 'left', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 14,
+      }}>
+        <div style={{ fontSize: 32 }}>{'\u267B'}</div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--on-surface, #0f172a)' }}>Keep Playing</div>
+          <div style={{ fontSize: 13, color: '#64748b' }}>5 more random hands. Still counts toward your IQ.</div>
+        </div>
+        <div style={{ fontSize: 18, color: '#94a3b8' }}>{'\u203A'}</div>
       </button>
 
       {/* Leaderboard */}
