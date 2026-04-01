@@ -398,3 +398,59 @@ export function loadGuestData<T>(key: string, fallback: T): T {
     return raw ? JSON.parse(raw) : fallback;
   } catch { return fallback; }
 }
+
+
+// ============ TESTER FEEDBACK ============
+
+export interface TesterFeedback {
+  id: string;
+  user_id: string | null;
+  q1_fun: number;
+  q2_ease: number;
+  q3_tips: number;
+  q4_recommend: number;
+  q5_return: number;
+  freeform: string | null;
+  tester_name: string | null;
+  tester_email: string | null;
+  submitted_at: string;
+}
+
+/** Submit tester feedback */
+export async function submitFeedback(
+  userId: string | null,
+  data: {
+    q1: number; q2: number; q3: number; q4: number; q5: number;
+    freeform: string; name: string; email: string;
+  },
+): Promise<boolean> {
+  const { error } = await supabase
+    .from('tester_feedback')
+    .insert({
+      user_id: userId,
+      q1_fun: data.q1,
+      q2_ease: data.q2,
+      q3_tips: data.q3,
+      q4_recommend: data.q4,
+      q5_return: data.q5,
+      freeform: data.freeform || null,
+      tester_name: data.name || null,
+      tester_email: data.email || null,
+    });
+  if (error) {
+    console.error('Failed to submit feedback:', error.message);
+    return false;
+  }
+  return true;
+}
+
+/** Get all feedback (admin only) */
+export async function getAllFeedback(): Promise<TesterFeedback[]> {
+  const { data, error } = await supabase
+    .from('tester_feedback')
+    .select('*')
+    .order('submitted_at', { ascending: false });
+
+  if (error) { console.error('Failed to fetch feedback:', error.message); return []; }
+  return (data ?? []) as TesterFeedback[];
+}

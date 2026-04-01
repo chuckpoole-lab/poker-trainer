@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/services/auth-context';
 import { getAllUsersStats, toggleUserAdmin } from '@/lib/services/cloud-storage';
+import { getAllFeedback, type TesterFeedback } from '@/lib/services/play-storage';
 import { Card, Badge, Button } from '@/components/ui';
 import LeagueManager from '@/components/admin/LeagueManager';
 
@@ -22,19 +23,24 @@ interface UserStat {
   lastActive: string;
 }
 
-type AdminTab = 'users' | 'leagues';
+type AdminTab = 'users' | 'leagues' | 'feedback';
 
 export default function AdminDashboard() {
   const { user, profile, loading } = useAuth();
   const router = useRouter();
   const [users, setUsers] = useState<UserStat[]>([]);
+  const [feedback, setFeedback] = useState<TesterFeedback[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const [activeTab, setActiveTab] = useState<AdminTab>('users');
 
   useEffect(() => {
     if (!loading && profile?.is_admin) {
-      getAllUsersStats().then((data) => {
-        setUsers(data as UserStat[]);
+      Promise.all([
+        getAllUsersStats(),
+        getAllFeedback(),
+      ]).then(([userData, feedbackData]) => {
+        setUsers(userData as UserStat[]);
+        setFeedback(feedbackData);
         setLoadingData(false);
       });
     } else if (!loading) {
@@ -100,6 +106,7 @@ export default function AdminDashboard() {
   const TABS: { key: AdminTab; label: string; icon: string }[] = [
     { key: 'users', label: 'Users', icon: '👥' },
     { key: 'leagues', label: 'Leagues', icon: '🏆' },
+    { key: 'feedback', label: `Feedback (${feedback.length})`, icon: '💬' },
   ];
 
   return (
@@ -297,6 +304,64 @@ export default function AdminDashboard() {
 
       {/* ── Leagues Tab ── */}
       {activeTab === 'leagues' && <LeagueManager />}
+
+      {/* ── Feedback Tab ── */}
+      {activeTab === 'feedback' && (
+        <>
+          {feedback.length > 0 && (() => {
+            const avg = (key: string) => {
+              const vals = feedback.map(f => Number((f as unknown as Record<string, unknown>)[key])).filter(n => n > 0);
+              return vals.length > 0 ? (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1) : '\u2014';
+            };
+            return (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr', gap: 8, marginBottom: 20 }}>
+                {[
+                  { label: 'Fun', key: 'q1_fun' },
+                  { label: 'Easy', key: 'q2_ease' },
+                  { label: 'Tips', key: 'q3_tips' },
+                  { label: 'Recommend', key: 'q4_recommend' },
+                  { label: 'Return', key: 'q5_return' },
+                ].map(item => (
+                  <Card key={item.label} elevation="raised" style={{ padding: 10, textAlign: 'center' }}>
+                    <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--primary)', fontFamily: 'var(--font-display)' }}>{avg(item.key)}</div>
+                    <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>{item.label}</div>
+                  </Card>
+                ))}
+              </div>
+            );
+          })()}
+          {feedback.length === 0 ? (
+            <p style={{ color: 'var(--muted)', fontFamily: 'var(--font-body)', textAlign: 'center', padding: 40 }}>No feedback submitted yet.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {feedback.map((fb) => (
+                <Card key={fb.id} elevation="raised" style={{ padding: 16 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                    <div>
+                      <span style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--on-surface)', fontFamily: 'var(--font-body)' }}>{fb.tester_name || 'Anonymous'}</span>
+                      {fb.tester_email && <span style={{ fontSize: 'var(--text-xs)', color: 'var(--muted)', fontFamily: 'var(--font-body)', marginLeft: 8 }}>{fb.tester_email}</span>}
+                    </div>
+                    <span style={{ fontSize: 'var(--text-xs)', color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>{new Date(fb.submitted_at).toLocaleDateString()}</span>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr', gap: 6, background: 'var(--surface-high)', borderRadius: 'var(--radius-md)', padding: '8px 10px', marginBottom: 10 }}>
+                    {[{ label: 'Fun', val: fb.q1_fun }, { label: 'Easy', val: fb.q2_ease }, { label: 'Tips', val: fb.q3_tips }, { label: 'Rec', val: fb.q4_recommend }, { label: 'Return', val: fb.q5_return }].map(item => (
+                      <div key={item.label} style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: 16, fontWeight: 800, fontFamily: 'var(--font-display)', color: item.val >= 4 ? 'var(--color-correct)' : item.val >= 3 ? 'var(--color-acceptable)' : 'var(--color-leak)' }}>{item.val}</div>
+                        <div style={{ fontSize: 9, color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>{item.label}</div>
+                      </div>
+                    ))}
+                  </div>
+                  {fb.freeform && (
+                    <div style={{ fontSize: 'var(--text-sm)', color: 'var(--on-surface)', fontFamily: 'var(--font-body)', lineHeight: 1.6, fontStyle: 'italic', padding: '8px 0', borderTop: '1px solid var(--outline-variant)' }}>
+                      &ldquo;{fb.freeform}&rdquo;
+                    </div>
+                  )}
+                </Card>
+              ))}
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }

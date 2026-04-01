@@ -22,6 +22,7 @@ import {
 } from '@/lib/services/play-scenario-generator';
 import Onboarding from '@/components/play/Onboarding';
 import { FeedbackSurvey, WelcomeToast, FeedbackButton, type FeedbackData } from '@/components/play/FeedbackSurvey';
+import { submitFeedback } from '@/lib/services/play-storage';
 
 const SUIT_SYM: Record<string, string> = { h: '\u2665', d: '\u2666', c: '\u2663', s: '\u2660' };
 const DAILY_COUNT = 5;
@@ -483,13 +484,13 @@ export default function PlayPage() {
   }
 
   // Feedback submit handler
-  const handleFeedbackSubmit = (data: FeedbackData) => {
-    // Save locally (and eventually to Supabase)
+  const handleFeedbackSubmit = async (data: FeedbackData) => {
+    // Save to Supabase
+    await submitFeedback(user?.id || null, data);
+    // Also save locally as backup
     saveGuestData('feedback-submitted', true);
     saveGuestData('feedback-data', data);
     setFeedbackSubmitted(true);
-    // Log for now — we can add Supabase persistence later
-    console.log('Feedback submitted:', data);
   };
 
   // Home screen
