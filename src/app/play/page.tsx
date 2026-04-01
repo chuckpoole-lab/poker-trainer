@@ -70,18 +70,18 @@ const DAILY_HANDS = [
 
 // ── Playing card component ──
 function PlayingCard({ rank, suit, delay = 0 }: { rank: string; suit: string; delay?: number }) {
-  const col = SUIT_COL_LIGHT[suit] || '#1e293b';
+  const col = suit === 'h' || suit === 'd' ? '#dc2626' : '#1e293b';
   return (
     <div style={{
-      width: 60, height: 84, borderRadius: 10, display: 'flex', flexDirection: 'column',
+      width: 64, height: 90, borderRadius: 12, display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center', gap: 2,
-      background: 'var(--surface-container, #fff)',
-      border: '2px solid var(--outline-variant, #e2e8f0)',
-      boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+      background: '#ffffff',
+      border: '2px solid #d1d5db',
+      boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
       animation: `cardIn 0.3s ease ${delay}s both`,
     }}>
-      <span style={{ fontSize: 26, fontWeight: 800, color: col, lineHeight: 1 }}>{rank}</span>
-      <span style={{ fontSize: 22, color: col, lineHeight: 1 }}>{SUIT_SYM[suit]}</span>
+      <span style={{ fontSize: 28, fontWeight: 800, color: col, lineHeight: 1 }}>{rank}</span>
+      <span style={{ fontSize: 24, color: col, lineHeight: 1 }}>{SUIT_SYM[suit]}</span>
     </div>
   );
 }
