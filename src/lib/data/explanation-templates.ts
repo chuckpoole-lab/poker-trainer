@@ -10,14 +10,19 @@ const posLabel = (p: Position) => POSITION_LABELS[p];
 
 export function explainOpen(hand: string, pos: Position, stackBb: number): Explanation {
   const isLate = [Position.CO, Position.BTN].includes(pos);
+  const isEarly = [Position.UTG, Position.UTG1].includes(pos);
   const suited = hand.endsWith('s');
+
+  const situationPhrase = isEarly
+    ? `You're first to act with ${hand} at ${stackBb}bb`
+    : `It folds to you with ${hand} at ${stackBb}bb`;
 
   return {
     plain: isLate
-      ? `Everyone folded to you in late position with ${hand} at ${stackBb}bb. This is a standard raising hand. You only have ${pos === Position.BTN ? 'two' : 'three'} players behind you and ${suited ? 'the hand has good potential if called' : 'the hand is strong enough to take down the blinds'}.`
-      : `Everyone folded to you at ${stackBb}bb with ${hand}. This hand is strong enough to open from ${posLabel(pos)}. ${stackBb >= 25 ? 'At this stack depth you can raise and comfortably play postflop.' : 'Raise and be prepared to make a decision if someone re-raises.'}`,
+      ? `${situationPhrase} in late position. This is a standard raising hand. You only have ${pos === Position.BTN ? 'two' : 'three'} players behind you and ${suited ? 'the hand has good potential if called' : 'the hand is strong enough to take down the blinds'}.`
+      : `${situationPhrase}. This hand is strong enough to open from ${posLabel(pos)}. ${stackBb >= 25 ? 'At this stack depth you can raise and comfortably play postflop.' : 'Raise and be prepared to make a decision if someone re-raises.'}`,
     poker: `${hand} from ${posLabel(pos)} at ${stackBb}bb is a standard open. ${isLate ? 'Late position allows wider opening ranges due to fewer players to act behind.' : 'This hand has sufficient equity and playability to justify an open from this position.'}`,
-    pattern: `From ${posLabel(pos)} at ${stackBb}bb with folds to you: ${hand} is an open. ${isLate ? 'In late position, raise with a wide range of broadways, suited connectors, and any ace.' : 'From earlier positions, stick to hands that play well against 3-bets and in multiway pots.'}`,
+    pattern: `From ${posLabel(pos)} at ${stackBb}bb: ${hand} is an open. ${isLate ? 'In late position, raise with a wide range of broadways, suited connectors, and any ace.' : 'From earlier positions, stick to hands that play well against 3-bets and in multiway pots.'}`,
   };
 }
 

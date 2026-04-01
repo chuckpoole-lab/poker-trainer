@@ -107,15 +107,17 @@ function buildSituation(spot: GeneratedSpot): string {
     return 'Everyone folds to you. Only the big blind remains.';
   }
 
-  const playersAfterMap: Record<string, string> = {
-    utg: '8-9 players behind you', utg1: '7-8 players behind you',
-    mp: '6-7 players behind you', lj: '5-6 players behind you',
-    hj: '4-5 players behind you', co: '3 players behind you',
-    btn: 'Only the blinds to get through',
+  // Position-aware situation text for unopened pots
+  const situationMap: Record<string, string> = {
+    utg: "You're first to act. Full table, 8-9 players behind you.",
+    utg1: "UTG folds. You're next to act with 7-8 players behind you.",
+    mp: "The early positions fold. You have 6-7 players behind you.",
+    lj: "The early positions fold to you. 5-6 players behind you.",
+    hj: "It folds to you. 4-5 players behind you.",
+    co: "Everyone folds to you. 3 players behind you.",
+    btn: "Everyone folds to you. Only the blinds to get through.",
   };
-  const playersAfter = playersAfterMap[template.position] || 'several players behind you';
-
-  return `Everyone folds to you. ${playersAfter}.`;
+  return situationMap[template.position] || 'Everyone folds to you.';
 }
 
 // ── Choice and tip builders ──
