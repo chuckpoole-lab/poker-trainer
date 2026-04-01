@@ -20,6 +20,7 @@ import {
   generateBonusHand,
   type PlayHandScenario,
 } from '@/lib/services/play-scenario-generator';
+import Onboarding from '@/components/play/Onboarding';
 
 const SUIT_SYM: Record<string, string> = { h: '\u2665', d: '\u2666', c: '\u2663', s: '\u2660' };
 const DAILY_COUNT = 5;
@@ -304,7 +305,7 @@ function ResultsScreen({ score, total, results, iq, iqChange, streak, rank, onBa
 export default function PlayPage() {
   const router = useRouter();
   const { user, profile } = useAuth();
-  const [screen, setScreen] = useState<'home' | 'game' | 'results' | 'bonus'>('home');
+  const [screen, setScreen] = useState<'home' | 'game' | 'results' | 'bonus' | 'onboarding'>('home');
   const [iq, setIq] = useState(100);
   const [streak, setStreak] = useState(0);
   const [rank, setRank] = useState(0);
@@ -316,6 +317,7 @@ export default function PlayPage() {
   const [bonusHands, setBonusHands] = useState<PlayHandScenario[]>([]);
   const [bonusCorrect, setBonusCorrect] = useState(0);
   const [bonusTotal, setBonusTotal] = useState(0);
+  const [onboardingDone, setOnboardingDone] = useState(true); // default true, set false if new player
 
   // Generate daily hands on mount
   useEffect(() => {
@@ -341,10 +343,19 @@ export default function PlayPage() {
           setTodayDone(true);
           setResultData({ score: todayResult.score, results: todayResult.hand_results, newIq: todayResult.iq_after });
         }
+        // New player: no challenge history means show onboarding
+        if (!todayResult && userIq <= 100 && streakData.current_streak === 0) {
+          setOnboardingDone(false);
+        }
       } else {
         const guestData = loadGuestData('play-stats', { iq: 100, streak: 0 });
         setIq(guestData.iq);
         setStreak(guestData.streak);
+        // Guest: check if they've done onboarding
+        const guestOnboarded = loadGuestData('onboarding-done', false);
+        if (!guestOnboarded && guestData.streak === 0) {
+          setOnboardingDone(false);
+        }
       }
       setLoading(false);
     }
@@ -409,6 +420,22 @@ export default function PlayPage() {
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <p style={{ color: 'var(--muted, #94a3b8)' }}>Loading...</p>
       </div>
+    );
+  }
+
+  // Onboarding for new players
+  if (!onboardingDone && screen === 'home') {
+    return (
+      <Onboarding
+        onComplete={() => {
+          setOnboardingDone(true);
+          saveGuestData('onboarding-done', true);
+        }}
+        onSkip={() => {
+          setOnboardingDone(true);
+          saveGuestData('onboarding-done', true);
+        }}
+      />
     );
   }
 
@@ -488,6 +515,20 @@ export default function PlayPage() {
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--on-surface, #0f172a)' }}>Keep Playing</div>
           <div style={{ fontSize: 13, color: '#64748b' }}>5 more random hands. Still counts toward your IQ.</div>
+        </div>
+        <div style={{ fontSize: 18, color: '#94a3b8' }}>{'\u203A'}</div>
+      </button>
+
+      {/* Basics refresher link */}
+      <button onClick={() => setOnboardingDone(false)} style={{
+        width: '100%', padding: '14px 20px', borderRadius: 16, cursor: 'pointer',
+        background: 'var(--surface-container, #fff)', border: '1.5px solid var(--outline-variant, #e2e8f0)',
+        textAlign: 'left', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 14,
+      }}>
+        <div style={{ fontSize: 28 }}>🎓</div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--on-surface, #0f172a)' }}>Learn the Basics</div>
+          <div style={{ fontSize: 13, color: '#64748b' }}>Positions, terminology, and key concepts</div>
         </div>
         <div style={{ fontSize: 18, color: '#94a3b8' }}>{'\u203A'}</div>
       </button>
