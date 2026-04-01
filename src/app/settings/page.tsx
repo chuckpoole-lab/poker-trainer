@@ -74,7 +74,10 @@ export default function SettingsPage() {
       </div>
 
       {/* Complexity mode */}
-      <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>Complexity Mode</h2>
+      <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>Complexity Mode</h2>
+      <p style={{ color: 'var(--text-muted)', fontSize: 12, marginBottom: 12, fontStyle: 'italic' }}>
+        Coming soon — currently all modes use Core settings.
+      </p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 28 }}>
         {modes.map(m => (
           <button
@@ -103,7 +106,10 @@ export default function SettingsPage() {
       </div>
 
       {/* Explanation toggles */}
-      <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>Explanations</h2>
+      <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>Explanations</h2>
+      <p style={{ color: 'var(--text-muted)', fontSize: 12, marginBottom: 12, fontStyle: 'italic' }}>
+        Coming soon — currently all hands show Plain English explanations.
+      </p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 28 }}>
         {[
           { label: 'Plain English', desc: 'Simple explanations anyone can follow', value: showPlain, set: setShowPlain },
