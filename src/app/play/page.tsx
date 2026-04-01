@@ -21,6 +21,7 @@ import {
   type PlayHandScenario,
 } from '@/lib/services/play-scenario-generator';
 import Onboarding from '@/components/play/Onboarding';
+import { FeedbackSurvey, WelcomeToast, FeedbackButton, type FeedbackData } from '@/components/play/FeedbackSurvey';
 
 const SUIT_SYM: Record<string, string> = { h: '\u2665', d: '\u2666', c: '\u2663', s: '\u2660' };
 const DAILY_COUNT = 5;
@@ -318,6 +319,9 @@ export default function PlayPage() {
   const [bonusCorrect, setBonusCorrect] = useState(0);
   const [bonusTotal, setBonusTotal] = useState(0);
   const [onboardingDone, setOnboardingDone] = useState(true); // default true, set false if new player
+  const [showWelcome, setShowWelcome] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
 
   // Generate daily hands on mount
   useEffect(() => {
@@ -346,7 +350,11 @@ export default function PlayPage() {
         // New player: no challenge history means show onboarding
         if (!todayResult && userIq <= 100 && streakData.current_streak === 0) {
           setOnboardingDone(false);
+          setShowWelcome(true);
         }
+        // Check if feedback already submitted
+        const fbDone = loadGuestData('feedback-submitted', false);
+        setFeedbackSubmitted(fbDone);
       } else {
         const guestData = loadGuestData('play-stats', { iq: 100, streak: 0 });
         setIq(guestData.iq);
@@ -355,7 +363,10 @@ export default function PlayPage() {
         const guestOnboarded = loadGuestData('onboarding-done', false);
         if (!guestOnboarded && guestData.streak === 0) {
           setOnboardingDone(false);
+          setShowWelcome(true);
         }
+        const fbDone = loadGuestData('feedback-submitted', false);
+        setFeedbackSubmitted(fbDone);
       }
       setLoading(false);
     }
@@ -471,9 +482,35 @@ export default function PlayPage() {
     );
   }
 
+  // Feedback submit handler
+  const handleFeedbackSubmit = (data: FeedbackData) => {
+    // Save locally (and eventually to Supabase)
+    saveGuestData('feedback-submitted', true);
+    saveGuestData('feedback-data', data);
+    setFeedbackSubmitted(true);
+    // Log for now — we can add Supabase persistence later
+    console.log('Feedback submitted:', data);
+  };
+
   // Home screen
   return (
     <div style={{ padding: '16px', maxWidth: 480, margin: '0 auto', paddingBottom: 100 }}>
+      {/* Welcome toast for first-time testers */}
+      {showWelcome && <WelcomeToast onDismiss={() => setShowWelcome(false)} />}
+
+      {/* Feedback modal */}
+      {showFeedback && (
+        <FeedbackSurvey
+          onClose={() => setShowFeedback(false)}
+          onSubmit={handleFeedbackSubmit}
+        />
+      )}
+
+      {/* Floating feedback button — show after welcome dismissed, before feedback submitted */}
+      {!showWelcome && !feedbackSubmitted && !showFeedback && (
+        <FeedbackButton onClick={() => setShowFeedback(true)} />
+      )}
+
       {/* Header */}
       <div style={{ textAlign: 'center', padding: '20px 0 16px' }}>
         <div style={{ fontSize: 36, marginBottom: 4 }}>{'\u2660'}</div>
