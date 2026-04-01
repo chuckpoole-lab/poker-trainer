@@ -408,8 +408,8 @@ export default function PlayPage() {
     return (
       <ResultsScreen
         score={resultData.score} total={DAILY_HANDS.length} results={resultData.results}
-        iq={resultData.newIq} iqChange={resultData.newIq - iq + (resultData.score * 2)}
-        streak={streak + 1} rank={rank} onBack={() => setScreen('home')}
+        iq={resultData.newIq} iqChange={resultData.score * 2}
+        streak={streak} rank={rank} onBack={() => setScreen('home')}
       />
     );
   }
