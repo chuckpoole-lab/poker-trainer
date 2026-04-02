@@ -209,3 +209,15 @@ Decision: Build two experiences in one app.
 - **Two complete user experiences** (Play + Train)
 - **Auth, admin, league branding, feedback collection** — all production
 - **Live at:** poker-trainer-six.vercel.app
+
+
+---
+
+## v0.9.1 — Card Display Bug Fix (April 2, 2026)
+
+**Bug:** Cards displayed did not match hand in coaching explanation (reported by Chuck)
+- Example: Cards showed 6♦4♣ but explanation referenced "66 at 20bb"
+- Root cause: Shared seeded RNG for suit selection could desync under React concurrent rendering
+- Fix: Deterministic suit assignment derived from hand code hash (no shared RNG)
+- Added safety validation: card ranks force-checked against hand code after generation
+- Tested: 650 hands (150 daily + 500 bonus) with zero mismatches
