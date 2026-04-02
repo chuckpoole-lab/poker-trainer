@@ -16,21 +16,20 @@ export default function WelcomePage() {
   // If user already has a preferred mode, redirect immediately
   useEffect(() => {
     async function checkMode() {
+      // Check profile first (signed-in users)
       if (user && profile?.preferred_mode) {
         router.replace(profile.preferred_mode === 'play' ? '/play' : '/learn');
         return;
       }
-      // Check localStorage for guests
-      if (isGuest) {
-        try {
-          const saved = localStorage.getItem('poker-trainer-preferred-mode');
-          if (saved) { router.replace(saved === 'play' ? '/play' : '/learn'); return; }
-        } catch { /* noop */ }
-      }
+      // Check localStorage for guests AND signed-in users without profile.preferred_mode
+      try {
+        const saved = localStorage.getItem('poker-trainer-preferred-mode');
+        if (saved) { router.replace(saved === 'play' ? '/play' : '/learn'); return; }
+      } catch { /* noop */ }
       setChecking(false);
     }
     checkMode();
-  }, [user, profile, isGuest, router]);
+  }, [user, profile, router]);
 
   const handleModeSelect = async (mode: 'play' | 'train') => {
     // Save preference

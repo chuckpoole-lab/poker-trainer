@@ -44,7 +44,7 @@ function BottomNav() {
         return (
           <button
             key={item.href}
-            onClick={() => router.push(item.href)}
+            onClick={() => { if (pathname !== item.href) router.push(item.href); }}
             style={{
               display: 'flex',
               flexDirection: 'column',

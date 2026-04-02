@@ -144,6 +144,15 @@ export default function AssessmentPage() {
 
   return (
     <div style={{ padding: '20px 16px 100px', maxWidth: 480, margin: '0 auto' }}>
+      {/* Exit button */}
+      <button onClick={() => router.push('/')} style={{
+        background: 'none', border: 'none', fontSize: 13, fontWeight: 600,
+        color: 'var(--muted)', cursor: 'pointer', padding: '4px 0', marginBottom: 12,
+        fontFamily: 'var(--font-body)',
+      }}>
+        &larr; Exit assessment
+      </button>
+
       {/* Onboarding — single StepCard replaces two separate modals */}
       {showOnboarding && (
         <StepCard
