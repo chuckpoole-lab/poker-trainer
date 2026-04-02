@@ -49,22 +49,26 @@ const SUIT_CHOICES = ['h', 'd', 'c', 's'];
 
 function parseHandCode(handCode: string, rng: () => number): Array<{ rank: string; suit: string }> {
   const rank1 = handCode[0];
-  const rank2 = handCode[1];
+  const rank2 = handCode.length >= 2 ? handCode[1] : rank1;
   const isSuited = handCode.endsWith('s');
-  const isPair = rank1 === rank2 && handCode.length === 2;
+  const isPair = rank1 === rank2 && !handCode.endsWith('s') && !handCode.endsWith('o');
+
+  // Use a deterministic suit assignment based on the hand code itself
+  // This ensures cards ALWAYS match the hand code regardless of RNG state
+  const suitSeed = handCode.charCodeAt(0) * 31 + handCode.charCodeAt(1) * 7 + (handCode.length > 2 ? handCode.charCodeAt(2) : 0);
 
   if (isPair) {
-    const s1Idx = Math.floor(rng() * 4);
-    let s2Idx = Math.floor(rng() * 3);
+    const s1Idx = suitSeed % 4;
+    let s2Idx = (suitSeed * 3 + 1) % 3;
     if (s2Idx >= s1Idx) s2Idx++;
     return [
       { rank: rank1, suit: SUIT_CHOICES[s1Idx] },
-      { rank: rank2, suit: SUIT_CHOICES[s2Idx] },
+      { rank: rank1, suit: SUIT_CHOICES[s2Idx] },
     ];
   }
 
   if (isSuited) {
-    const suitIdx = Math.floor(rng() * 4);
+    const suitIdx = suitSeed % 4;
     const suit = SUIT_CHOICES[suitIdx];
     return [
       { rank: rank1, suit },
@@ -73,8 +77,8 @@ function parseHandCode(handCode: string, rng: () => number): Array<{ rank: strin
   }
 
   // Offsuit
-  const s1Idx = Math.floor(rng() * 4);
-  let s2Idx = Math.floor(rng() * 3);
+  const s1Idx = suitSeed % 4;
+  let s2Idx = (suitSeed * 3 + 1) % 3;
   if (s2Idx >= s1Idx) s2Idx++;
   return [
     { rank: rank1, suit: SUIT_CHOICES[s1Idx] },
@@ -188,6 +192,14 @@ function spotToPlayScenario(generated: GeneratedSpot, rng: () => number): PlayHa
   const pos = POSITION_DISPLAY[template.position] || POSITION_LABELS[template.position as Position];
 
   const cards = parseHandCode(spot.handCode, rng);
+  
+  // Safety: verify cards match hand code
+  const expectedRanks = [spot.handCode[0], spot.handCode.length >= 2 ? spot.handCode[1] : spot.handCode[0]];
+  if (cards[0].rank !== expectedRanks[0] || cards[1].rank !== expectedRanks[1]) {
+    // Force correct ranks if somehow mismatched
+    cards[0].rank = expectedRanks[0];
+    cards[1].rank = expectedRanks[1];
+  }
   const situation = buildSituation(generated);
   const choices = buildChoices(spot.simplifiedAction, template.spotType as SpotType, template.stackDepthBb);
   const correct = getCorrectIndex(spot.simplifiedAction, choices);
