@@ -141,32 +141,12 @@ function buildSituation(spot: GeneratedSpot): string {
 // ── Choice and tip builders ──
 
 function buildChoices(correctAction: SimplifiedAction, spotType: SpotType, stackBb: number): string[] {
-  // Build 3 contextual choices based on the spot type and correct action
+  // Consistent choices for Play mode — same options every time per spot type
   if (spotType === SpotType.FACING_OPEN || spotType === SpotType.FACING_3BET) {
-    if (correctAction === SimplifiedAction.JAM) return ['Fold', 'Call', 'Shove all-in'];
-    if (correctAction === SimplifiedAction.CALL) return ['Fold', 'Call', 'Shove all-in'];
-    if (correctAction === SimplifiedAction.FOLD) return ['Fold', 'Call', 'Shove all-in'];
+    return ['Fold', 'Call', 'All-in'];
   }
-
-  // Unopened pot
-  if (stackBb <= 12) {
-    // Push/fold territory
-    if (correctAction === SimplifiedAction.JAM) return ['Fold', 'Raise to 2.5x', 'Shove all-in'];
-    if (correctAction === SimplifiedAction.FOLD) return ['Fold', 'Limp in', 'Shove all-in'];
-  }
-
-  if (stackBb <= 15) {
-    if (correctAction === SimplifiedAction.JAM) return ['Fold', 'Raise to 2.5x', 'Shove all-in'];
-    if (correctAction === SimplifiedAction.OPEN) return ['Fold', 'Raise to 2.5x', 'Shove all-in'];
-    if (correctAction === SimplifiedAction.FOLD) return ['Fold', 'Raise to 2.5x', 'Shove all-in'];
-  }
-
-  // Standard stacks (20-30bb)
-  if (correctAction === SimplifiedAction.OPEN) return ['Fold', 'Raise to 2.5x', 'Shove all-in'];
-  if (correctAction === SimplifiedAction.FOLD) return ['Fold', 'Raise to 2.5x', 'Limp in'];
-  if (correctAction === SimplifiedAction.JAM) return ['Fold', 'Raise to 2.5x', 'Shove all-in'];
-
-  return ['Fold', 'Raise to 2.5x', 'Shove all-in'];
+  // Unopened pots (including SB)
+  return ['Fold', 'Raise', 'All-in'];
 }
 
 function getCorrectIndex(correctAction: SimplifiedAction, choices: string[]): number {
