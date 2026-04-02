@@ -603,6 +603,61 @@ export default function PlayPage() {
         </div>
       )}
 
+      {/* What's New & Coming Soon */}
+      <div style={{
+        background: 'var(--surface-container, #fff)', border: '1px solid var(--outline-variant, #e2e8f0)',
+        borderRadius: 16, padding: '16px 18px', marginBottom: 14,
+      }}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--on-surface, #0f172a)', marginBottom: 12 }}>
+          {'\u2728'} What&apos;s new &amp; coming soon
+        </div>
+
+        <div style={{ fontSize: 12, fontWeight: 700, color: '#10b981', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>New</div>
+        {['Daily Hands challenge with Poker IQ scoring', 'Unlimited bonus rounds after daily challenge', 'Position-aware coaching tips on every hand', 'Learn the Basics onboarding for new players'].map(f => (
+          <div key={f} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', fontSize: 13, color: 'var(--on-surface, #0f172a)' }}>
+            <span style={{ color: '#10b981', fontSize: 14 }}>{'\u2713'}</span> {f}
+          </div>
+        ))}
+
+        <div style={{ fontSize: 12, fontWeight: 700, color: '#8b5cf6', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 12, marginBottom: 6 }}>Coming soon</div>
+        {['Survival Mode \u2014 how many hands can you survive?', 'Raise sizing strategy training', '3-betting and re-raise scenarios', 'Facing limpers \u2014 exploit the most common bar poker play', 'League leaderboards and weekly rankings', 'Hand logger for tracking your live sessions'].map(f => (
+          <div key={f} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', fontSize: 13, color: '#64748b' }}>
+            <span style={{ color: '#8b5cf6', fontSize: 14 }}>{'\u25CB'}</span> {f}
+          </div>
+        ))}
+
+        <div style={{ borderTop: '1px solid var(--outline-variant, #e2e8f0)', marginTop: 12, paddingTop: 12 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--on-surface, #0f172a)', marginBottom: 6 }}>
+            What feature would you love to see?
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input
+              id="feature-input"
+              type="text"
+              placeholder="Your idea..."
+              style={{
+                flex: 1, padding: '8px 12px', fontSize: 13, borderRadius: 10,
+                border: '1.5px solid var(--outline-variant, #e2e8f0)',
+                background: 'var(--surface-container, #fff)', color: 'var(--on-surface, #0f172a)',
+                fontFamily: 'var(--font-body, inherit)', outline: 'none',
+              }}
+            />
+            <button onClick={() => {
+              const input = document.getElementById('feature-input') as HTMLInputElement;
+              if (input?.value.trim()) {
+                submitFeedback(user?.id || null, { q1: 0, q2: 0, q3: 0, q4: 0, q5: 0, freeform: 'FEATURE REQUEST: ' + input.value.trim(), name: '', email: '' });
+                input.value = '';
+                input.placeholder = 'Thanks! Submitted.';
+              }
+            }} style={{
+              padding: '8px 14px', fontSize: 13, fontWeight: 700, borderRadius: 10,
+              background: '#8b5cf6', color: '#fff', border: 'none', cursor: 'pointer',
+              fontFamily: 'var(--font-body, inherit)', whiteSpace: 'nowrap',
+            }}>Send</button>
+          </div>
+        </div>
+      </div>
+
       {/* Switch to Train mode */}
       <button onClick={() => router.push('/learn')} style={{
         width: '100%', padding: 12, borderRadius: 12, cursor: 'pointer',
