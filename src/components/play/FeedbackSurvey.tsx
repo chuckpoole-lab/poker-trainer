@@ -34,7 +34,7 @@ export function FeedbackSurvey({ onClose, onSubmit }: FeedbackProps) {
   const [email, setEmail] = useState('');
   const [submitted, setSubmitted] = useState(false);
 
-  const allRated = QUESTIONS.every(q => ratings[q.id] !== undefined);
+  const anyContent = freeform.trim().length > 0 || Object.keys(ratings).length > 0 || name.trim().length > 0 || email.trim().length > 0;
 
   const handleSubmit = () => {
     const data: FeedbackData = {
@@ -86,42 +86,20 @@ export function FeedbackSurvey({ onClose, onSubmit }: FeedbackProps) {
       }}>
         <div style={{ textAlign: 'center', marginBottom: 20 }}>
           <div style={{ fontSize: 36, marginBottom: 8 }}>💬</div>
-          <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--on-surface, #0f172a)' }}>Quick Feedback</div>
-          <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>Rate each item 1 (worst) to 5 (best). Takes about 30 seconds.</div>
+          <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--on-surface, #0f172a)' }}>Tell us what you think</div>
+          <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>Even one sentence helps us make this better.</div>
         </div>
 
-        {QUESTIONS.map((q) => (
-          <div key={q.id} style={{ marginBottom: 18 }}>
-            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--on-surface, #0f172a)', marginBottom: 8, lineHeight: 1.5 }}>
-              {q.text}
-            </div>
-            <div style={{ display: 'flex', gap: 6 }}>
-              {[1, 2, 3, 4, 5].map(n => (
-                <button key={n} onClick={() => setRatings(prev => ({ ...prev, [q.id]: n }))} style={{
-                  flex: 1, padding: '10px 0', fontSize: 15, fontWeight: 700,
-                  borderRadius: 10, cursor: 'pointer', transition: 'all 0.15s',
-                  fontFamily: 'var(--font-body, inherit)',
-                  background: ratings[q.id] === n ? '#10b981' : 'var(--surface-container, #f1f5f9)',
-                  color: ratings[q.id] === n ? '#fff' : '#64748b',
-                  border: ratings[q.id] === n ? '2px solid #10b981' : '2px solid var(--outline-variant, #e2e8f0)',
-                }}>{n}</button>
-              ))}
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#94a3b8', marginTop: 4, padding: '0 2px' }}>
-              <span>Not at all</span><span>Absolutely</span>
-            </div>
-          </div>
-        ))}
-
-        {/* Free-form field */}
+        {/* Lead with freeform — lowest friction */}
         <div style={{ marginBottom: 20 }}>
           <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--on-surface, #0f172a)', marginBottom: 8, lineHeight: 1.5 }}>
-            What did you like, what could be better, and any other thoughts?
+            What{'\u2019'}s one thing you{'\u2019'}d change or improve?
           </div>
           <textarea
             value={freeform}
             onChange={(e) => setFreeform(e.target.value)}
-            placeholder="Your honest thoughts help us improve..."
+            placeholder="Be honest — what worked, what didn't, what confused you..."
+            autoFocus
             style={{
               width: '100%', minHeight: 80, padding: '12px 14px', fontSize: 14,
               borderRadius: 12, border: '2px solid var(--outline-variant, #e2e8f0)',
@@ -130,6 +108,32 @@ export function FeedbackSurvey({ onClose, onSubmit }: FeedbackProps) {
               outline: 'none',
             }}
           />
+        </div>
+
+        {/* Ratings — optional, shown after freeform */}
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>
+            Quick ratings (optional)
+          </div>
+          {QUESTIONS.map((q) => (
+            <div key={q.id} style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--on-surface, #0f172a)', marginBottom: 6, lineHeight: 1.5 }}>
+                {q.text}
+              </div>
+              <div style={{ display: 'flex', gap: 5 }}>
+                {[1, 2, 3, 4, 5].map(n => (
+                  <button key={n} onClick={() => setRatings(prev => ({ ...prev, [q.id]: n }))} style={{
+                    flex: 1, padding: '8px 0', fontSize: 14, fontWeight: 700,
+                    borderRadius: 8, cursor: 'pointer', transition: 'all 0.15s',
+                    fontFamily: 'var(--font-body, inherit)',
+                    background: ratings[q.id] === n ? '#10b981' : 'var(--surface-container, #f1f5f9)',
+                    color: ratings[q.id] === n ? '#fff' : '#64748b',
+                    border: ratings[q.id] === n ? '2px solid #10b981' : '2px solid var(--outline-variant, #e2e8f0)',
+                  }}>{n}</button>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
 
         {/* Optional contact info */}
@@ -168,11 +172,11 @@ export function FeedbackSurvey({ onClose, onSubmit }: FeedbackProps) {
           />
         </div>
 
-        <button onClick={handleSubmit} disabled={!allRated} style={{
+        <button onClick={handleSubmit} disabled={!anyContent} style={{
           width: '100%', padding: 14, fontSize: 15, fontWeight: 700,
-          background: allRated ? '#10b981' : '#94a3b8', color: '#fff',
-          border: 'none', borderRadius: 12, cursor: allRated ? 'pointer' : 'default',
-          fontFamily: 'var(--font-body, inherit)', opacity: allRated ? 1 : 0.5,
+          background: anyContent ? '#10b981' : '#94a3b8', color: '#fff',
+          border: 'none', borderRadius: 12, cursor: anyContent ? 'pointer' : 'default',
+          fontFamily: 'var(--font-body, inherit)', opacity: anyContent ? 1 : 0.5,
         }}>Submit feedback</button>
 
         <div style={{ textAlign: 'center', paddingTop: 12 }}>
@@ -213,17 +217,26 @@ export function WelcomeToast({ onDismiss }: { onDismiss: () => void }) {
 }
 
 // ── Floating feedback button ──
-export function FeedbackButton({ onClick }: { onClick: () => void }) {
+export function FeedbackButton({ onClick, pulse }: { onClick: () => void; pulse?: boolean }) {
   return (
-    <button onClick={onClick} style={{
-      position: 'fixed', bottom: 80, right: 16, zIndex: 998,
-      background: '#8b5cf6', color: '#fff', border: 'none',
-      borderRadius: 28, padding: '10px 16px', fontSize: 13, fontWeight: 700,
-      cursor: 'pointer', boxShadow: '0 4px 12px rgba(139,92,246,0.4)',
-      display: 'flex', alignItems: 'center', gap: 6,
-      fontFamily: 'var(--font-body, inherit)',
-    }}>
-      💬 Feedback
-    </button>
+    <>
+      {pulse && (
+        <style>{`@keyframes feedbackPulse {
+          0%, 100% { transform: scale(1); box-shadow: 0 4px 12px rgba(139,92,246,0.4); }
+          50% { transform: scale(1.08); box-shadow: 0 6px 20px rgba(139,92,246,0.6); }
+        }`}</style>
+      )}
+      <button onClick={onClick} style={{
+        position: 'fixed', bottom: 80, right: 16, zIndex: 998,
+        background: '#8b5cf6', color: '#fff', border: 'none',
+        borderRadius: 28, padding: '10px 16px', fontSize: 13, fontWeight: 700,
+        cursor: 'pointer', boxShadow: '0 4px 12px rgba(139,92,246,0.4)',
+        display: 'flex', alignItems: 'center', gap: 6,
+        fontFamily: 'var(--font-body, inherit)',
+        animation: pulse ? 'feedbackPulse 1.5s ease-in-out 3' : 'none',
+      }}>
+        💬 Feedback
+      </button>
+    </>
   );
 }

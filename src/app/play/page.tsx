@@ -218,11 +218,13 @@ function DailyHandsGame({ hands, iq, streak, rank, isBonus, onComplete, onBonusR
 }
 
 // ── Results screen ──
-function ResultsScreen({ score, total, results, iq, iqChange, streak, rank, onBack, onKeepPlaying }: {
+function ResultsScreen({ score, total, results, iq, iqChange, streak, rank, onBack, onKeepPlaying, feedbackDone, onQuickFeedback, onOpenFullSurvey }: {
   score: number; total: number; results: boolean[]; iq: number; iqChange: number;
   streak: number; rank: number; onBack: () => void; onKeepPlaying: () => void;
+  feedbackDone: boolean; onQuickFeedback: (emoji: string) => void; onOpenFullSurvey: () => void;
 }) {
   const [copied, setCopied] = useState(false);
+  const [quickDone, setQuickDone] = useState(false);
   const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
   const shareText = `Daily Hands \u2014 ${dateStr}\n${results.map(r => r ? '\uD83D\uDFE9' : '\uD83D\uDFE5').join('')}\n${score}/${total} \u2014 IQ ${iq}\npokertrain.app/daily`;
@@ -280,6 +282,49 @@ function ResultsScreen({ score, total, results, iq, iqChange, streak, rank, onBa
           <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--on-surface, #0f172a)' }}>{score}/5 &mdash; IQ {iq}</div>
           <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>pokertrain.app/daily</div>
         </div>
+
+        {/* Quick feedback nudge */}
+        {!feedbackDone && !quickDone && (
+          <div style={{
+            background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: 14,
+            padding: '14px 16px', marginBottom: 14, textAlign: 'center',
+          }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', marginBottom: 10 }}>
+              How was that experience?
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 12, marginBottom: 8 }}>
+              {[
+                { emoji: '\uD83D\uDE0D', label: 'Loved it' },
+                { emoji: '\uD83D\uDC4D', label: 'Good' },
+                { emoji: '\uD83D\uDE10', label: 'Meh' },
+                { emoji: '\uD83D\uDC4E', label: 'Needs work' },
+              ].map(({ emoji, label }) => (
+                <button key={label} onClick={() => { onQuickFeedback(emoji); setQuickDone(true); }} style={{
+                  background: 'none', border: 'none', cursor: 'pointer', padding: '6px 8px',
+                  borderRadius: 12, fontSize: 28, transition: 'transform 0.15s',
+                }} title={label}>{emoji}</button>
+              ))}
+            </div>
+            <button onClick={onOpenFullSurvey} style={{
+              background: 'none', border: 'none', fontSize: 12, fontWeight: 600,
+              color: '#8b5cf6', cursor: 'pointer', fontFamily: 'var(--font-body, inherit)',
+            }}>or give detailed feedback</button>
+          </div>
+        )}
+        {quickDone && (
+          <div style={{
+            background: '#ecfdf5', border: '1.5px solid #a7f3d0', borderRadius: 14,
+            padding: '12px 16px', marginBottom: 14, textAlign: 'center',
+            fontSize: 14, color: '#065f46', fontWeight: 600,
+          }}>
+            Thanks! Want to tell us more?{' '}
+            <button onClick={onOpenFullSurvey} style={{
+              background: 'none', border: 'none', fontSize: 14, fontWeight: 700,
+              color: '#8b5cf6', cursor: 'pointer', fontFamily: 'var(--font-body, inherit)',
+              textDecoration: 'underline',
+            }}>Quick survey</button>
+          </div>
+        )}
 
         <button onClick={handleShare} style={{
           width: '100%', padding: 14, fontSize: 15, fontWeight: 700, background: '#10b981', color: '#fff',
@@ -470,6 +515,18 @@ export default function PlayPage() {
     );
   }
 
+  // Quick feedback handler (emoji tap on results screen)
+  const handleQuickFeedback = async (emoji: string) => {
+    // Save quick reaction as lightweight feedback
+    const quickData: FeedbackData = {
+      q1: 0, q2: 0, q3: 0, q4: 0, q5: 0,
+      freeform: `[Quick reaction: ${emoji}]`,
+      name: '', email: '',
+      submittedAt: new Date().toISOString(),
+    };
+    await submitFeedback(user?.id || null, quickData);
+  };
+
   // Results screen (daily only)
   if (screen === 'results' && resultData) {
     return (
@@ -478,6 +535,9 @@ export default function PlayPage() {
         iq={resultData.newIq} iqChange={resultData.score * 2}
         streak={streak} rank={rank} onBack={() => setScreen('home')}
         onKeepPlaying={handleKeepPlaying}
+        feedbackDone={feedbackSubmitted}
+        onQuickFeedback={handleQuickFeedback}
+        onOpenFullSurvey={() => { setScreen('home'); setShowFeedback(true); }}
       />
     );
   }
@@ -527,8 +587,9 @@ export default function PlayPage() {
       )}
 
       {/* Floating feedback button — show after welcome dismissed, before feedback submitted */}
+      {/* Pulses after user has completed the daily challenge to draw attention */}
       {!showWelcome && !feedbackSubmitted && !showFeedback && (
-        <FeedbackButton onClick={() => setShowFeedback(true)} />
+        <FeedbackButton onClick={() => setShowFeedback(true)} pulse={todayDone} />
       )}
 
       {/* Header */}

@@ -1,13 +1,49 @@
 'use client';
 
 import './globals.css';
-import { useEffect, useRef } from 'react';
+import { Component, useEffect, useRef } from 'react';
+import type { ReactNode, ErrorInfo } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { AuthProvider, useAuth } from '@/lib/services/auth-context';
 import { LeagueProvider, useLeague } from '@/lib/services/league-context';
 import { startSession } from '@/lib/services/session-tracker';
 import SignInScreen from '@/components/auth/SignInScreen';
 import UserMenu from '@/components/auth/UserMenu';
+
+/** Global error boundary — shows friendly message if anything crashes */
+class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() { return { hasError: true }; }
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error('App error:', error, info);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{
+          minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: '#0f172a', padding: 24, textAlign: 'center',
+        }}>
+          <div>
+            <div style={{ fontSize: 48, marginBottom: 12 }}>{'\u2660'}</div>
+            <div style={{ fontSize: 20, fontWeight: 800, color: '#fff', marginBottom: 8 }}>Something went wrong</div>
+            <div style={{ fontSize: 14, color: '#94a3b8', marginBottom: 24, lineHeight: 1.6 }}>
+              We{'\u2019'}re working on a fix. Try refreshing the page.
+            </div>
+            <button onClick={() => window.location.reload()} style={{
+              padding: '12px 32px', fontSize: 15, fontWeight: 700, background: '#10b981', color: '#fff',
+              border: 'none', borderRadius: 12, cursor: 'pointer',
+            }}>Refresh</button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 const NAV_ITEMS = [
   { href: '/', label: '♠', title: 'Home' },
@@ -144,19 +180,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <title>Poker Trainer</title>
       </head>
       <body>
-        <LeagueProvider>
-          <AuthProvider>
-            <LeagueTitle />
-            <AuthGate>
-              <SessionTracker />
-              <TopBar />
-              <main style={{ paddingBottom: 72, minHeight: '100vh' }}>
-                {children}
-              </main>
-              <BottomNav />
-            </AuthGate>
-          </AuthProvider>
-        </LeagueProvider>
+        <ErrorBoundary>
+          <LeagueProvider>
+            <AuthProvider>
+              <LeagueTitle />
+              <AuthGate>
+                <SessionTracker />
+                <TopBar />
+                <main style={{ paddingBottom: 72, minHeight: '100vh' }}>
+                  {children}
+                </main>
+                <BottomNav />
+              </AuthGate>
+            </AuthProvider>
+          </LeagueProvider>
+        </ErrorBoundary>
       </body>
     </html>
   );
