@@ -1,10 +1,24 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/services/auth-context';
 import { Button } from '@/components/ui';
 
+function isInAppBrowser(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent || navigator.vendor || '';
+  // Detect common in-app browsers that block Google OAuth
+  return /FBAN|FBAV|Instagram|Messenger|Twitter|Line|Snapchat|WeChat|MicroMessenger/i.test(ua);
+}
+
 export default function SignInScreen() {
   const { signInWithGoogle, continueAsGuest, loading } = useAuth();
+  const [inApp, setInApp] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    setInApp(isInAppBrowser());
+  }, []);
 
   if (loading) {
     return (
@@ -61,6 +75,62 @@ export default function SignInScreen() {
         flexDirection: 'column',
         gap: 12,
       }}>
+        {/* In-app browser warning */}
+        {inApp && (
+          <div style={{
+            background: '#FFF3CD',
+            border: '1px solid #FFCB2F',
+            borderRadius: 'var(--radius-md)',
+            padding: '14px 16px',
+            marginBottom: 4,
+            textAlign: 'center',
+          }}>
+            <p style={{
+              color: '#664D03',
+              fontSize: 'var(--text-sm)',
+              fontFamily: 'var(--font-body)',
+              fontWeight: 700,
+              marginBottom: 8,
+              lineHeight: 1.4,
+            }}>
+              Google sign-in doesn&apos;t work in this browser
+            </p>
+            <p style={{
+              color: '#664D03',
+              fontSize: 'var(--text-xs)',
+              fontFamily: 'var(--font-body)',
+              marginBottom: 12,
+              lineHeight: 1.5,
+            }}>
+              Tap the button below to copy the link, then paste it in Safari or Chrome to sign in.
+            </p>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(window.location.href).then(() => {
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
+                });
+              }}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '10px 20px',
+                background: '#664D03',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 'var(--radius-md)',
+                fontSize: 'var(--text-sm)',
+                fontWeight: 700,
+                fontFamily: 'var(--font-body)',
+                cursor: 'pointer',
+              }}
+            >
+              {copied ? '✓ Copied!' : '📋 Copy Link'}
+            </button>
+          </div>
+        )}
+
         {/* Google sign-in */}
         <button
           onClick={signInWithGoogle}
