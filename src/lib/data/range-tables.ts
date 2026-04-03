@@ -48,12 +48,36 @@ export function handStrength(h: HandCombo): number {
 }
 
 // Parse range notation like "22+, A2s+, K8s+, Q9s+, ATo+, KJo+"
+// Also handles dash ranges: "22-99", "A2s-ATs", "A2o-AJo"
 function parseRange(notation: string): Set<string> {
   const result = new Set<string>();
   const parts = notation.split(',').map(s => s.trim()).filter(Boolean);
 
   for (const part of parts) {
-    if (part.endsWith('+')) {
+    if (part.includes('-')) {
+      // Dash range: e.g. "22-99", "A2s-ATs", "A2o-AJo"
+      const [low, high] = part.split('-');
+
+      if (low.length === 2 && low[0] === low[1] && high.length === 2 && high[0] === high[1]) {
+        // Pair range: e.g. "22-99" means 22,33,44,...,99
+        const minVal = RANK_VAL[low[0]];
+        const maxVal = RANK_VAL[high[0]];
+        for (const r of RANKS) {
+          if (RANK_VAL[r] >= minVal && RANK_VAL[r] <= maxVal) result.add(`${r}${r}`);
+        }
+      } else if (low.length === 3 && high.length === 3) {
+        // Suited/offsuit range: e.g. "A2s-ATs" or "A2o-AJo"
+        const r1 = low[0]; // High card (should be same for both)
+        const type = low[2]; // 's' or 'o'
+        const minR2Val = RANK_VAL[low[1]];
+        const maxR2Val = RANK_VAL[high[1]];
+        for (const r of RANKS) {
+          if (RANK_VAL[r] >= minR2Val && RANK_VAL[r] <= maxR2Val) {
+            result.add(`${r1}${r}${type}`);
+          }
+        }
+      }
+    } else if (part.endsWith('+')) {
       const base = part.slice(0, -1);
 
       if (base.length === 2 && base[0] === base[1]) {
