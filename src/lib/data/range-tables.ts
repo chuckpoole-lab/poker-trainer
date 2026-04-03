@@ -177,29 +177,123 @@ interface FacingOpenEntry {
 }
 
 const FACING_OPEN_RAW: Record<string, FacingOpenEntry> = {
+  // ============================================================
+  // UTG opens — tight range, defenders must be selective
+  // ============================================================
+
+  // UTG opens, hero in HJ
+  'utg_hj_15': { jamRange: '99+, AQs+, AQo+', callRange: '' },
+  'utg_hj_20': { jamRange: 'TT+, AQs+, AQo+', callRange: '99, AJs, KQs' },
+  'utg_hj_25': { jamRange: 'QQ+, AKs, AKo', callRange: '77-JJ, ATs+, AJo+, KQs, QJs, JTs' },
+  'utg_hj_30': { jamRange: 'QQ+, AKs', callRange: '55-JJ, ATs+, AJo+, KJs+, KQo, QJs, JTs, T9s' },
+
   // UTG opens, hero in CO
-  'utg_co_25': { jamRange: 'TT+, AJs+, AQo+, KQs', callRange: '66-99, ATs, AJo, KJs+, KQo, QJs, JTs, T9s' },
+  'utg_co_15': { jamRange: '99+, AQs+, AQo+', callRange: '' },
   'utg_co_20': { jamRange: 'TT+, AJs+, AQo+', callRange: '77-99, ATs, KQs' },
+  'utg_co_25': { jamRange: 'TT+, AJs+, AQo+, KQs', callRange: '66-99, ATs, AJo, KJs+, KQo, QJs, JTs, T9s' },
   'utg_co_30': { jamRange: 'TT+, AQs+, AKo', callRange: '55-99, ATs+, AJo+, KJs+, KQo, QJs, JTs, T9s' },
-  // CO opens, hero on BTN
-  'co_btn_25': { jamRange: '99+, ATs+, AJo+, KQs, A5s, A4s', callRange: '22-88, A2s-A9s, ATo, K9s+, KJo+, QTs+, QJo, JTs, T9s, 98s, 87s' },
-  'co_btn_20': { jamRange: '88+, ATs+, AJo+, KQs, A5s', callRange: '22-77, A8s-A9s, KTs+, QJs, JTs' },
-  'co_btn_15': { jamRange: '55+, A2s+, A7o+, KTs+, KJo+, QTs+', callRange: '' },
-  // BTN opens, hero in SB
-  'btn_sb_25': { jamRange: 'TT+, ATs+, AJo+, KQs, A5s, A4s', callRange: '22-99, A2s-A9s, ATo, K8s+, KTo+, Q9s+, J9s+, T9s, 98s' },
-  'btn_sb_20': { jamRange: '88+, A9s+, ATo+, KJs+, KQo, A5s', callRange: '' },
-  'btn_sb_15': { jamRange: '44+, A2s+, A5o+, K9s+, KTo+, QTs+, JTs', callRange: '' },
-  // BTN opens, hero in BB
-  'btn_bb_25': { jamRange: 'TT+, AJs+, AQo+, A5s', callRange: '22-99, A2s-ATs, A2o-AJo, K2s+, K9o+, Q5s+, QTo+, J7s+, JTo, T7s+, 97s+, 87s, 76s, 65s' },
-  'btn_bb_20': { jamRange: '99+, ATs+, AJo+, KQs', callRange: '22-88, A2s-A9s, K5s+, KTo+, Q8s+, J8s+, T8s+, 98s, 87s' },
-  'btn_bb_30': { jamRange: 'TT+, AQs+, AKo', callRange: '22-99, A2s+, A2o-AJo, K2s+, K7o+, Q4s+, Q9o+, J6s+, J9o+, T6s+, T9o, 96s+, 86s+, 75s+, 65s, 54s' },
+
+  // UTG opens, hero on BTN
+  'utg_btn_15': { jamRange: '77+, A9s+, ATo+, KTs+, KQo, QJs', callRange: '' },
+  'utg_btn_20': { jamRange: 'TT+, AJs+, AQo+', callRange: '66-99, ATs, KQs, QJs' },
+  'utg_btn_25': { jamRange: 'QQ+, AKs, AKo', callRange: '44-JJ, ATs+, AJo+, KJs+, KQo, QTs+, JTs, T9s' },
+  'utg_btn_30': { jamRange: 'QQ+, AKs', callRange: '33-JJ, A9s+, ATo+, KTs+, KJo+, QTs+, JTs, T9s, 98s' },
+
+  // UTG opens, hero in SB
+  'utg_sb_15': { jamRange: 'TT+, AQs+, AQo+', callRange: '' },
+  'utg_sb_20': { jamRange: 'TT+, AQs+, AQo+', callRange: '' },
+  'utg_sb_25': { jamRange: 'QQ+, AKs, AKo', callRange: '88-JJ, AJs+, AQo, KQs' },
+  'utg_sb_30': { jamRange: 'QQ+, AKs', callRange: '77-JJ, ATs+, AJo+, KQs' },
+
+  // UTG opens, hero in BB (wider defense due to pot odds)
+  'utg_bb_15': { jamRange: '99+, AQs+, AQo+', callRange: '' },
+  'utg_bb_20': { jamRange: 'TT+, AQs+, AQo+', callRange: '22-99, ATs+, AJo, KJs+, KQo, QJs, JTs' },
+  'utg_bb_25': { jamRange: 'QQ+, AKs, AKo', callRange: '22-JJ, A8s+, ATo+, K9s+, KTo+, Q9s+, J9s+, T9s, 98s, 87s' },
+  'utg_bb_30': { jamRange: 'QQ+, AKs', callRange: '22-JJ, A4s+, A8o+, K7s+, KTo+, Q8s+, QTo+, J8s+, JTo, T8s+, 97s+, 87s, 76s, 65s' },
+
+  // ============================================================
+  // HJ opens — moderate range
+  // ============================================================
+
+  // HJ opens, hero in CO
+  'hj_co_15': { jamRange: '88+, ATs+, AJo+, KQs, A5s', callRange: '' },
+  'hj_co_20': { jamRange: 'TT+, AJs+, AQo+, KQs', callRange: '77-99, ATs, KJs' },
+  'hj_co_25': { jamRange: 'QQ+, AKs, AKo', callRange: '55-JJ, ATs+, AJo+, KJs+, KQo, QJs, JTs, T9s' },
+  'hj_co_30': { jamRange: 'QQ+, AKs', callRange: '44-JJ, A9s+, ATo+, KTs+, KJo+, QTs+, JTs, T9s, 98s' },
+
   // HJ opens, hero on BTN
-  'hj_btn_25': { jamRange: '99+, ATs+, AJo+, KQs, A5s', callRange: '22-88, A2s-A9s, ATo, K9s+, KJo+, QTs+, JTs, T9s, 98s' },
-  'hj_btn_20': { jamRange: '88+, A9s+, ATo+, KQs, A5s', callRange: '22-77, KJs, QJs, JTs' },
   'hj_btn_15': { jamRange: '55+, A2s+, A7o+, K9s+, KTo+, QTs+, JTs', callRange: '' },
-  // MP opens, hero in CO
-  'mp_co_25': { jamRange: 'TT+, AQs+, AKo', callRange: '55-99, ATs+, AJo, KJs+, KQo, QJs, JTs, T9s' },
+  'hj_btn_20': { jamRange: '88+, A9s+, ATo+, KQs, A5s', callRange: '22-77, KJs, QJs, JTs' },
+  'hj_btn_25': { jamRange: '99+, ATs+, AJo+, KQs, A5s', callRange: '22-88, A2s-A9s, ATo, K9s+, KJo+, QTs+, JTs, T9s, 98s' },
+  'hj_btn_30': { jamRange: 'TT+, AQs+, AKo', callRange: '22-99, A2s-AJs, ATo+, K9s+, KJo+, QTs+, QJo, JTs, T9s, 98s, 87s' },
+
+  // HJ opens, hero in SB
+  'hj_sb_15': { jamRange: '99+, ATs+, AQo+, KQs', callRange: '' },
+  'hj_sb_20': { jamRange: 'TT+, AQs+, AKo', callRange: '' },
+  'hj_sb_25': { jamRange: 'QQ+, AKs, AKo', callRange: '77-JJ, AJs+, AQo, KQs' },
+  'hj_sb_30': { jamRange: 'QQ+, AKs', callRange: '66-JJ, ATs+, AJo+, KJs+, KQo, QJs' },
+
+  // HJ opens, hero in BB
+  'hj_bb_15': { jamRange: '77+, ATs+, AJo+, KQs', callRange: '' },
+  'hj_bb_20': { jamRange: '99+, ATs+, AJo+, KQs', callRange: '22-88, A2s-A9s, KTs+, KQo, QTs+, JTs, T9s' },
+  'hj_bb_25': { jamRange: 'TT+, AQs+, AKo, A5s', callRange: '22-99, A2s-AJs, A9o-AJo, K8s+, KTo+, Q9s+, J9s+, T8s+, 98s, 87s' },
+  'hj_bb_30': { jamRange: 'QQ+, AKs', callRange: '22-JJ, A2s+, A7o+, K6s+, K9o+, Q8s+, QTo+, J8s+, JTo, T7s+, 97s+, 86s+, 76s, 65s' },
+
+  // ============================================================
+  // CO opens — wider range, defenders widen accordingly
+  // ============================================================
+
+  // CO opens, hero on BTN
+  'co_btn_15': { jamRange: '55+, A2s+, A7o+, KTs+, KJo+, QTs+', callRange: '' },
+  'co_btn_20': { jamRange: '88+, ATs+, AJo+, KQs, A5s', callRange: '22-77, A8s-A9s, KTs+, QJs, JTs' },
+  'co_btn_25': { jamRange: '99+, ATs+, AJo+, KQs, A5s, A4s', callRange: '22-88, A2s-A9s, ATo, K9s+, KJo+, QTs+, QJo, JTs, T9s, 98s, 87s' },
+  'co_btn_30': { jamRange: 'TT+, AQs+, AKo', callRange: '22-99, A2s+, ATo+, K8s+, KTo+, Q9s+, QJo, J9s+, T9s, 98s, 87s' },
+
+  // CO opens, hero in SB
+  'co_sb_15': { jamRange: '66+, A2s+, A7o+, KTs+, KJo+, QTs+', callRange: '' },
+  'co_sb_20': { jamRange: '99+, ATs+, AJo+, KQs, A5s', callRange: '' },
+  'co_sb_25': { jamRange: 'TT+, AQs+, AKo, A5s, A4s', callRange: '55-99, ATs+, AJo, KJs+, KQo, QJs' },
+  'co_sb_30': { jamRange: 'TT+, AQs+, AKo', callRange: '44-99, A9s+, ATo+, KTs+, KJo+, QTs+, JTs, T9s' },
+
+  // CO opens, hero in BB (wide defense)
+  'co_bb_15': { jamRange: '55+, A2s+, A5o+, K9s+, KTo+, QTs+, JTs', callRange: '' },
+  'co_bb_20': { jamRange: '99+, ATs+, AJo+, KQs, A5s', callRange: '22-88, A2s-A9s, K8s+, KTo+, Q9s+, J9s+, T8s+, 98s, 87s' },
+  'co_bb_25': { jamRange: 'TT+, AQs+, AKo, A5s', callRange: '22-99, A2s-AJs, A8o-AJo, K5s+, K9o+, Q7s+, QTo+, J7s+, JTo, T7s+, 97s+, 86s+, 76s, 65s' },
+  'co_bb_30': { jamRange: 'TT+, AQs+, AKo', callRange: '22-99, A2s+, A2o-AJo, K2s+, K7o+, Q5s+, Q9o+, J6s+, J9o+, T6s+, T9o, 96s+, 85s+, 75s+, 65s, 54s' },
+
+  // ============================================================
+  // BTN opens — wide range, blinds defend accordingly
+  // ============================================================
+
+  // BTN opens, hero in SB
+  'btn_sb_15': { jamRange: '44+, A2s+, A5o+, K9s+, KTo+, QTs+, JTs', callRange: '' },
+  'btn_sb_20': { jamRange: '88+, A9s+, ATo+, KJs+, KQo, A5s', callRange: '' },
+  'btn_sb_25': { jamRange: 'TT+, ATs+, AJo+, KQs, A5s, A4s', callRange: '22-99, A2s-A9s, ATo, K8s+, KTo+, Q9s+, J9s+, T9s, 98s' },
+  'btn_sb_30': { jamRange: 'TT+, AQs+, AKo, A5s', callRange: '33-99, A2s-A9s, ATo, K9s+, KTo+, Q9s+, J9s+, T9s, 98s, 87s' },
+
+  // BTN opens, hero in BB (widest defense spot in poker)
+  'btn_bb_15': { jamRange: '44+, A2s+, A5o+, K9s+, KTo+, QTs+, JTs', callRange: '' },
+  'btn_bb_20': { jamRange: '99+, ATs+, AJo+, KQs', callRange: '22-88, A2s-A9s, K5s+, KTo+, Q8s+, J8s+, T8s+, 98s, 87s' },
+  'btn_bb_25': { jamRange: 'TT+, AJs+, AQo+, A5s', callRange: '22-99, A2s-ATs, A2o-AJo, K2s+, K9o+, Q5s+, QTo+, J7s+, JTo, T7s+, 97s+, 87s, 76s, 65s' },
+  'btn_bb_30': { jamRange: 'TT+, AQs+, AKo', callRange: '22-99, A2s+, A2o-AJo, K2s+, K7o+, Q4s+, Q9o+, J6s+, J9o+, T6s+, T9o, 96s+, 86s+, 75s+, 65s, 54s' },
+
+  // ============================================================
+  // SB opens — widest opening range, BB defends very wide
+  // ============================================================
+
+  // SB opens, hero in BB
+  'sb_bb_15': { jamRange: '44+, A2s+, A5o+, K8s+, KTo+, Q9s+, J9s+, T9s', callRange: '' },
+  'sb_bb_20': { jamRange: '77+, A2s+, A7o+, K9s+, KTo+, QTs+, JTs', callRange: '22-66, A2o-A6o, K2s-K8s, K9o, Q8s, J8s+, T8s+, 98s' },
+  'sb_bb_25': { jamRange: '99+, ATs+, AJo+, KQs, A5s, A4s', callRange: '22-88, A2s-A9s, A2o-ATo, K2s+, K5o+, Q5s+, Q9o+, J7s+, J9o+, T7s+, T9o, 97s+, 86s+, 76s, 65s' },
+  'sb_bb_30': { jamRange: 'TT+, AQs+, AKo', callRange: '22-99, A2s+, A2o-AJo, K2s+, K3o+, Q3s+, Q7o+, J5s+, J8o+, T6s+, T8o+, 96s+, 85s+, 75s+, 64s+, 54s, 43s' },
+
+  // ============================================================
+  // MP opens (legacy compatibility), hero in CO
+  // ============================================================
+  'mp_co_15': { jamRange: '99+, AQs+, AKo', callRange: '' },
   'mp_co_20': { jamRange: 'TT+, AJs+, AQo+', callRange: '77-99, ATs, KQs' },
+  'mp_co_25': { jamRange: 'TT+, AQs+, AKo', callRange: '55-99, ATs+, AJo, KJs+, KQo, QJs, JTs, T9s' },
+  'mp_co_30': { jamRange: 'QQ+, AKs', callRange: '44-JJ, A9s+, ATo+, KTs+, KJo+, QTs+, JTs, T9s, 98s' },
 };
 
 // ======= PARSED/COMPILED RANGE DATA =======
