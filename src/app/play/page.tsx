@@ -20,6 +20,7 @@ import {
   generateBonusHand,
   type PlayHandScenario,
 } from '@/lib/services/play-scenario-generator';
+import { trackHandPlayed } from '@/lib/services/session-tracker';
 import Onboarding from '@/components/play/Onboarding';
 import { FeedbackSurvey, WelcomeToast, FeedbackButton, type FeedbackData } from '@/components/play/FeedbackSurvey';
 import { submitFeedback } from '@/lib/services/play-storage';
@@ -380,6 +381,9 @@ export default function PlayPage() {
     setIq(newIq);
     setScreen('results');
 
+    // Track hands played for session analytics
+    trackHandPlayed(DAILY_COUNT);
+
     if (user) {
       await saveDailyChallengeResult(user.id, score, DAILY_COUNT, results, iq, newIq);
       await checkAndAwardBadges(user.id);
@@ -417,6 +421,8 @@ export default function PlayPage() {
   // Handle bonus round completion
   const handleBonusComplete = useCallback(async (score: number, results: boolean[], newIq: number) => {
     setIq(newIq);
+    // Track bonus hands for session analytics
+    trackHandPlayed(results.length);
     if (user) {
       const { updateUserPokerIQ } = await import('@/lib/services/play-storage');
       await updateUserPokerIQ(user.id, newIq);

@@ -1,9 +1,11 @@
 'use client';
 
 import './globals.css';
+import { useEffect, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { AuthProvider, useAuth } from '@/lib/services/auth-context';
 import { LeagueProvider, useLeague } from '@/lib/services/league-context';
+import { startSession } from '@/lib/services/session-tracker';
 import SignInScreen from '@/components/auth/SignInScreen';
 import UserMenu from '@/components/auth/UserMenu';
 
@@ -72,6 +74,21 @@ function BottomNav() {
   );
 }
 
+/** Starts session tracking once user state is resolved */
+function SessionTracker() {
+  const { user, isGuest, loading } = useAuth();
+  const sessionStarted = useRef(false);
+
+  useEffect(() => {
+    if (!loading && !sessionStarted.current) {
+      sessionStarted.current = true;
+      startSession(user?.id || null, isGuest || !user);
+    }
+  }, [user, isGuest, loading]);
+
+  return null;
+}
+
 /** Auth gate — shows sign-in screen until user signs in or chooses guest */
 function AuthGate({ children }: { children: React.ReactNode }) {
   const { user, isGuest, loading } = useAuth();
@@ -131,6 +148,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <AuthProvider>
             <LeagueTitle />
             <AuthGate>
+              <SessionTracker />
               <TopBar />
               <main style={{ paddingBottom: 72, minHeight: '100vh' }}>
                 {children}

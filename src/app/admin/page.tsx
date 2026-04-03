@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/services/auth-context';
 import { getAllUsersStats, toggleUserAdmin } from '@/lib/services/cloud-storage';
 import { getAllFeedback, type TesterFeedback } from '@/lib/services/play-storage';
+import { getDailyStats, getStatsRange, type DailyStatsResult } from '@/lib/services/session-tracker';
 import { Card, Badge, Button } from '@/components/ui';
 import LeagueManager from '@/components/admin/LeagueManager';
 
@@ -23,24 +24,32 @@ interface UserStat {
   lastActive: string;
 }
 
-type AdminTab = 'users' | 'leagues' | 'feedback';
+type AdminTab = 'stats' | 'users' | 'leagues' | 'feedback';
 
 export default function AdminDashboard() {
   const { user, profile, loading } = useAuth();
   const router = useRouter();
   const [users, setUsers] = useState<UserStat[]>([]);
   const [feedback, setFeedback] = useState<TesterFeedback[]>([]);
+  const [dailyStats, setDailyStats] = useState<DailyStatsResult | null>(null);
+  const [yesterdayStats, setYesterdayStats] = useState<DailyStatsResult | null>(null);
+  const [weekStats, setWeekStats] = useState<DailyStatsResult[]>([]);
   const [loadingData, setLoadingData] = useState(true);
-  const [activeTab, setActiveTab] = useState<AdminTab>('users');
+  const [activeTab, setActiveTab] = useState<AdminTab>('stats');
 
   useEffect(() => {
     if (!loading && profile?.is_admin) {
       Promise.all([
         getAllUsersStats(),
         getAllFeedback(),
-      ]).then(([userData, feedbackData]) => {
+        getDailyStats(),
+        getStatsRange(7),
+      ]).then(([userData, feedbackData, todayStats, rangeStats]) => {
         setUsers(userData as UserStat[]);
         setFeedback(feedbackData);
+        setDailyStats(todayStats);
+        setYesterdayStats(rangeStats.length > 1 ? rangeStats[1] : null);
+        setWeekStats(rangeStats);
         setLoadingData(false);
       });
     } else if (!loading) {
@@ -104,6 +113,7 @@ export default function AdminDashboard() {
   }
 
   const TABS: { key: AdminTab; label: string; icon: string }[] = [
+    { key: 'stats', label: 'Stats', icon: '📈' },
     { key: 'users', label: 'Users', icon: '👥' },
     { key: 'leagues', label: 'Leagues', icon: '🏆' },
     { key: 'feedback', label: `Feedback (${feedback.length})`, icon: '💬' },
@@ -152,6 +162,195 @@ export default function AdminDashboard() {
           </button>
         ))}
       </div>
+
+      {/* ── Stats Tab ── */}
+      {activeTab === 'stats' && dailyStats && (() => {
+        const formatDuration = (secs: number) => {
+          if (secs < 60) return `${secs}s`;
+          const mins = Math.floor(secs / 60);
+          const rem = Math.round(secs % 60);
+          return rem > 0 ? `${mins}m ${rem}s` : `${mins}m`;
+        };
+
+        const trend = (today: number, yesterday: number) => {
+          if (yesterday === 0) return today > 0 ? '+' : '';
+          const diff = today - yesterday;
+          if (diff > 0) return `+${diff}`;
+          if (diff < 0) return `${diff}`;
+          return '';
+        };
+
+        const trendColor = (today: number, yesterday: number) => {
+          if (today > yesterday) return 'var(--color-correct, #10b981)';
+          if (today < yesterday) return 'var(--color-leak, #ef4444)';
+          return 'var(--muted)';
+        };
+
+        const yd = yesterdayStats || { total_sessions: 0, registered_sessions: 0, guest_sessions: 0, unique_devices: 0, returning_devices: 0, total_hands: 0, avg_hands: 0, avg_duration_seconds: 0, play_sessions: 0, train_sessions: 0 };
+
+        // 7-day totals
+        const week7 = weekStats.reduce((acc, d) => ({
+          sessions: acc.sessions + d.total_sessions,
+          hands: acc.hands + d.total_hands,
+          guests: acc.guests + d.guest_sessions,
+          registered: acc.registered + d.registered_sessions,
+        }), { sessions: 0, hands: 0, guests: 0, registered: 0 });
+
+        return (
+          <>
+            {/* Today's headline stats */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 16 }}>
+              <Card elevation="raised" style={{ padding: 14, textAlign: 'center' }}>
+                <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--primary)', fontFamily: 'var(--font-display)' }}>
+                  {dailyStats.total_sessions}
+                </div>
+                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>
+                  Sessions Today
+                </div>
+                {yesterdayStats && (
+                  <div style={{ fontSize: 11, fontWeight: 600, color: trendColor(dailyStats.total_sessions, yd.total_sessions), marginTop: 2 }}>
+                    {trend(dailyStats.total_sessions, yd.total_sessions)} vs yesterday
+                  </div>
+                )}
+              </Card>
+              <Card elevation="raised" style={{ padding: 14, textAlign: 'center' }}>
+                <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--color-correct)', fontFamily: 'var(--font-display)' }}>
+                  {dailyStats.registered_sessions}
+                </div>
+                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>
+                  Registered
+                </div>
+              </Card>
+              <Card elevation="raised" style={{ padding: 14, textAlign: 'center' }}>
+                <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--gold)', fontFamily: 'var(--font-display)' }}>
+                  {dailyStats.guest_sessions}
+                </div>
+                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>
+                  Guests
+                </div>
+              </Card>
+            </div>
+
+            {/* Engagement stats */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+              <Card elevation="raised" style={{ padding: 14, textAlign: 'center' }}>
+                <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--on-surface)', fontFamily: 'var(--font-display)' }}>
+                  {dailyStats.total_hands}
+                </div>
+                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>
+                  Hands Played
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
+                  avg {dailyStats.avg_hands}/session
+                </div>
+              </Card>
+              <Card elevation="raised" style={{ padding: 14, textAlign: 'center' }}>
+                <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--on-surface)', fontFamily: 'var(--font-display)' }}>
+                  {formatDuration(dailyStats.avg_duration_seconds)}
+                </div>
+                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>
+                  Avg Session
+                </div>
+              </Card>
+            </div>
+
+            {/* Visitor insights */}
+            <Card elevation="raised" style={{ padding: 16, marginBottom: 16 }}>
+              <div style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--on-surface)', fontFamily: 'var(--font-body)', marginBottom: 12 }}>
+                Visitor Insights
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 'var(--text-sm)', color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>Unique devices today</span>
+                  <span style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--on-surface)', fontFamily: 'var(--font-body)' }}>{dailyStats.unique_devices}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 'var(--text-sm)', color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>Returning visitors</span>
+                  <span style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--color-correct)', fontFamily: 'var(--font-body)' }}>{dailyStats.returning_devices}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 'var(--text-sm)', color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>Play mode sessions</span>
+                  <span style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--on-surface)', fontFamily: 'var(--font-body)' }}>{dailyStats.play_sessions}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 'var(--text-sm)', color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>Train mode sessions</span>
+                  <span style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--on-surface)', fontFamily: 'var(--font-body)' }}>{dailyStats.train_sessions}</span>
+                </div>
+              </div>
+            </Card>
+
+            {/* 7-day summary */}
+            <Card elevation="raised" style={{ padding: 16, marginBottom: 16 }}>
+              <div style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color: 'var(--on-surface)', fontFamily: 'var(--font-body)', marginBottom: 12 }}>
+                Last 7 Days
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8, background: 'var(--surface-high)', borderRadius: 'var(--radius-md)', padding: '10px 12px' }}>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--on-surface)', fontFamily: 'var(--font-display)' }}>
+                    {week7.sessions}
+                  </div>
+                  <div style={{ fontSize: 9, color: 'var(--muted)', fontFamily: 'var(--font-body)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Sessions
+                  </div>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--on-surface)', fontFamily: 'var(--font-display)' }}>
+                    {week7.hands}
+                  </div>
+                  <div style={{ fontSize: 9, color: 'var(--muted)', fontFamily: 'var(--font-body)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Hands
+                  </div>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--color-correct)', fontFamily: 'var(--font-display)' }}>
+                    {week7.registered}
+                  </div>
+                  <div style={{ fontSize: 9, color: 'var(--muted)', fontFamily: 'var(--font-body)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Registered
+                  </div>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gold)', fontFamily: 'var(--font-display)' }}>
+                    {week7.guests}
+                  </div>
+                  <div style={{ fontSize: 9, color: 'var(--muted)', fontFamily: 'var(--font-body)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Guests
+                  </div>
+                </div>
+              </div>
+
+              {/* Daily breakdown */}
+              <div style={{ marginTop: 12 }}>
+                {weekStats.map((day, i) => {
+                  const d = new Date(day.date);
+                  const label = i === 0 ? 'Today' : i === 1 ? 'Yesterday' : d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                  const maxSessions = Math.max(...weekStats.map(s => s.total_sessions), 1);
+                  const barWidth = Math.max((day.total_sessions / maxSessions) * 100, 2);
+                  return (
+                    <div key={day.date} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0' }}>
+                      <span style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'var(--font-body)', width: 70, flexShrink: 0 }}>{label}</span>
+                      <div style={{ flex: 1, height: 8, borderRadius: 4, background: 'var(--surface-high)' }}>
+                        <div style={{
+                          width: `${barWidth}%`, height: '100%', borderRadius: 4,
+                          background: i === 0 ? 'var(--primary)' : 'var(--primary-dim, #6366f1)',
+                          opacity: i === 0 ? 1 : 0.5 + (0.5 * (weekStats.length - i) / weekStats.length),
+                        }} />
+                      </div>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--on-surface)', fontFamily: 'var(--font-body)', width: 24, textAlign: 'right' }}>{day.total_sessions}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+          </>
+        );
+      })()}
+
+      {activeTab === 'stats' && !dailyStats && (
+        <p style={{ color: 'var(--muted)', fontFamily: 'var(--font-body)', textAlign: 'center', padding: 40 }}>
+          No session data yet. Stats will appear once users start visiting the app.
+        </p>
+      )}
 
       {/* ── Users Tab ── */}
       {activeTab === 'users' && (
