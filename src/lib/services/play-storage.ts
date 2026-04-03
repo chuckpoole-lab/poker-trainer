@@ -204,6 +204,16 @@ export async function getUserRank(userId: string, leagueSlug?: string | null): P
   return idx >= 0 ? idx + 1 : board.length + 1;
 }
 
+/** Get user's rank AND total player count */
+export async function getUserRankWithCount(userId: string, leagueSlug?: string | null): Promise<{ rank: number; total: number }> {
+  // Get a larger leaderboard to find the user and count players
+  const board = await getLeaderboard(leagueSlug, 500);
+  const idx = board.findIndex(e => e.user_id === userId);
+  const rank = idx >= 0 ? idx + 1 : board.length + 1;
+  const total = Math.max(board.length, rank);
+  return { rank, total };
+}
+
 // ============ SURVIVAL MODE ============
 
 /** Save a survival mode score */

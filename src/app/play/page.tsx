@@ -8,7 +8,8 @@ import {
   getTodaysChallenge,
   getUserPokerIQ,
   getLeaderboard,
-  getUserRank,
+  getUserRankWithCount,
+  getDailyChallengeHistory,
   checkAndAwardBadges,
   saveGuestData,
   loadGuestData,
@@ -312,7 +313,9 @@ export default function PlayPage() {
   const [iq, setIq] = useState(100);
   const [streak, setStreak] = useState(0);
   const [rank, setRank] = useState(0);
+  const [totalPlayers, setTotalPlayers] = useState(0);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [iqHistory, setIqHistory] = useState<{ date: string; iq: number }[]>([]);
   const [todayDone, setTodayDone] = useState(false);
   const [resultData, setResultData] = useState<{ score: number; results: boolean[]; newIq: number } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -334,17 +337,27 @@ export default function PlayPage() {
   useEffect(() => {
     async function load() {
       if (user && profile) {
-        const [userIq, streakData, todayResult, board, userRank] = await Promise.all([
+        const [userIq, streakData, todayResult, board, rankData, history] = await Promise.all([
           getUserPokerIQ(user.id),
           getStreak(user.id),
           getTodaysChallenge(user.id),
           getLeaderboard(profile.league_slug, 10),
-          getUserRank(user.id, profile.league_slug),
+          getUserRankWithCount(user.id, profile.league_slug),
+          getDailyChallengeHistory(user.id, 14),
         ]);
         setIq(userIq);
         setStreak(streakData.current_streak);
         setLeaderboard(board);
-        setRank(userRank);
+        setRank(rankData.rank);
+        setTotalPlayers(rankData.total);
+        // Build IQ history from daily challenge results (oldest first for chart)
+        if (history.length > 0) {
+          const pts = history
+            .filter((h: { challenge_date: string; iq_after: number }) => h.iq_after != null)
+            .map((h: { challenge_date: string; iq_after: number }) => ({ date: h.challenge_date, iq: h.iq_after }))
+            .reverse();
+          setIqHistory(pts);
+        }
         if (todayResult) {
           setTodayDone(true);
           setResultData({ score: todayResult.score, results: todayResult.hand_results, newIq: todayResult.iq_after });
@@ -529,8 +542,62 @@ export default function PlayPage() {
       <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
         <StatPill icon="🔥" value={String(streak)} label="Streak" bg="#fef3c7" borderColor="#f59e0b" color="#92400e" />
         <StatPill icon="🧠" value={String(iq)} label="IQ" bg="#ede9fe" borderColor="#8b5cf6" color="#5b21b6" />
-        <StatPill icon="🏆" value={rank > 0 ? `#${rank}` : '—'} label="Rank" bg="#ecfdf5" borderColor="#10b981" color="#065f46" />
+        <StatPill icon="🏆" value={rank > 0 ? `#${rank}` : '—'} label={totalPlayers > 0 ? `of ${totalPlayers}` : 'Rank'} bg="#ecfdf5" borderColor="#10b981" color="#065f46" />
       </div>
+
+      {/* IQ Trend */}
+      {iqHistory.length >= 2 && (() => {
+        const iqs = iqHistory.map(h => h.iq);
+        const minIq = Math.min(...iqs);
+        const maxIq = Math.max(...iqs);
+        const range = maxIq - minIq || 1;
+        const w = 280;
+        const h = 48;
+        const pad = 4;
+        const points = iqs.map((val, i) => {
+          const x = pad + (i / (iqs.length - 1)) * (w - pad * 2);
+          const y = h - pad - ((val - minIq) / range) * (h - pad * 2);
+          return `${x},${y}`;
+        }).join(' ');
+        const iqChange = iqs[iqs.length - 1] - iqs[0];
+        const changeColor = iqChange >= 0 ? '#10b981' : '#ef4444';
+        const changeText = iqChange >= 0 ? `+${iqChange}` : `${iqChange}`;
+        return (
+          <div style={{
+            background: 'var(--surface-container, #fff)', border: '1px solid var(--outline-variant, #e2e8f0)',
+            borderRadius: 16, padding: '12px 16px', marginBottom: 14,
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 1 }}>
+                IQ Trend ({iqHistory.length}d)
+              </span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: changeColor }}>
+                {changeText} IQ
+              </span>
+            </div>
+            <svg width="100%" viewBox={`0 0 ${w} ${h}`} style={{ display: 'block' }}>
+              <polyline
+                points={points}
+                fill="none"
+                stroke={changeColor}
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              {/* End dot */}
+              {(() => {
+                const lastX = pad + ((iqs.length - 1) / (iqs.length - 1)) * (w - pad * 2);
+                const lastY = h - pad - ((iqs[iqs.length - 1] - minIq) / range) * (h - pad * 2);
+                return <circle cx={lastX} cy={lastY} r="4" fill={changeColor} />;
+              })()}
+            </svg>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
+              <span>{iqHistory[0].date.slice(5)}</span>
+              <span>{iqHistory[iqHistory.length - 1].date.slice(5)}</span>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Daily challenge CTA */}
       <button onClick={() => todayDone ? setScreen('results') : setScreen('game')} style={{
@@ -606,6 +673,16 @@ export default function PlayPage() {
               </div>
             );
           })}
+          {/* Rank summary footer */}
+          {rank > 0 && totalPlayers > 0 && (
+            <div style={{
+              textAlign: 'center', paddingTop: 10, marginTop: 4,
+              borderTop: '1px solid var(--outline-variant, #f1f5f9)',
+              fontSize: 13, color: '#64748b',
+            }}>
+              You{'\u2019'}re <span style={{ fontWeight: 700, color: '#10b981' }}>#{rank}</span> of {totalPlayers} players
+            </div>
+          )}
         </div>
       )}
 
