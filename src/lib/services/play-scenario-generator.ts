@@ -168,12 +168,14 @@ function getCorrectIndex(correctAction: SimplifiedAction, choices: string[]): nu
   return 0;
 }
 
+const ACTION_DISPLAY: Record<string, string> = {
+  fold: 'Fold', open: 'Raise', call: 'Call', jam: 'All-in',
+};
+
 function buildPlayTip(spot: GeneratedSpot, isCorrect: boolean): string {
-  const { spot: s, template: t } = spot;
-  const pos = POSITION_DISPLAY[t.position] || POSITION_LABELS[t.position as Position];
-  const hand = s.handCode;
-  const stack = t.stackDepthBb;
+  const { spot: s } = spot;
   const action = s.simplifiedAction;
+  const actionLabel = ACTION_DISPLAY[action] || action;
 
   // Use the explanation templates but adapt for play mode tone
   const explanation = s.explanation;
@@ -181,8 +183,8 @@ function buildPlayTip(spot: GeneratedSpot, isCorrect: boolean): string {
     return explanation.plain;
   }
 
-  // Wrong answer: combine the plain explanation with a friendly nudge
-  return explanation.plain;
+  // Wrong answer: clearly state the correct action, then explain why
+  return `The correct play is ${actionLabel}. ${explanation.plain}`;
 }
 
 // ── Convert a generated spot into a PlayHandScenario ──

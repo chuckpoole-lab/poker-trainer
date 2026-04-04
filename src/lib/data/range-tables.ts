@@ -208,7 +208,7 @@ const FACING_OPEN_RAW: Record<string, FacingOpenEntry> = {
   // UTG opens, hero in BB (wider defense due to pot odds)
   'utg_bb_15': { jamRange: '99+, AQs+, AQo+', callRange: '' },
   'utg_bb_20': { jamRange: 'TT+, AQs+, AQo+', callRange: '22-99, ATs+, AJo, KJs+, KQo, QJs, JTs' },
-  'utg_bb_25': { jamRange: 'QQ+, AKs, AKo', callRange: '22-JJ, A8s+, ATo+, K9s+, KTo+, Q9s+, J9s+, T9s, 98s, 87s' },
+  'utg_bb_25': { jamRange: 'QQ+, AKs, AKo', callRange: '22-JJ, A2s+, ATo+, K9s+, KTo+, Q9s+, J9s+, T9s, 98s, 87s' },
   'utg_bb_30': { jamRange: 'QQ+, AKs', callRange: '22-JJ, A4s+, A8o+, K7s+, KTo+, Q8s+, QTo+, J8s+, JTo, T8s+, 97s+, 87s, 76s, 65s' },
 
   // ============================================================
@@ -252,8 +252,8 @@ const FACING_OPEN_RAW: Record<string, FacingOpenEntry> = {
   // CO opens, hero in SB
   'co_sb_15': { jamRange: '66+, A2s+, A7o+, KTs+, KJo+, QTs+', callRange: '' },
   'co_sb_20': { jamRange: '99+, ATs+, AJo+, KQs, A5s', callRange: '' },
-  'co_sb_25': { jamRange: 'TT+, AQs+, AKo, A5s, A4s', callRange: '55-99, ATs+, AJo, KJs+, KQo, QJs' },
-  'co_sb_30': { jamRange: 'TT+, AQs+, AKo', callRange: '44-99, A9s+, ATo+, KTs+, KJo+, QTs+, JTs, T9s' },
+  'co_sb_25': { jamRange: 'TT+, AQs+, AKo, A5s, A4s', callRange: '22-99, A2s-A9s, ATo+, KTs+, KJo+, QTs+, JTs, T9s' },
+  'co_sb_30': { jamRange: 'TT+, AQs+, AKo', callRange: '22-99, A2s+, ATo+, KTs+, KJo+, QTs+, JTs, T9s, 98s' },
 
   // CO opens, hero in BB (wide defense)
   'co_bb_15': { jamRange: '55+, A2s+, A5o+, K9s+, KTo+, QTs+, JTs', callRange: '' },
