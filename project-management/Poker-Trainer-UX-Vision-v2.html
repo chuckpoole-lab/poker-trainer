@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Poker Trainer — UX Vision v2 (For Chuck Review)</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', sans-serif; background: #fff; color: #1a1a1a; line-height: 1.7; }
+
+  .doc { max-width: 860px; margin: 0 auto; padding: 40px 32px 80px; }
+
+  h1 { font-size: 32px; font-weight: 800; margin-bottom: 4px; }
+  .subtitle { font-size: 16px; color: #666; margin-bottom: 32px; }
+  h2 { font-size: 22px; font-weight: 800; margin-top: 48px; margin-bottom: 12px; border-bottom: 2px solid #e8e2d9; padding-bottom: 8px; }
+  h3 { font-size: 17px; font-weight: 700; margin-top: 28px; margin-bottom: 8px; }
+  p { font-size: 14px; margin-bottom: 12px; }
+  .callout {
+    background: #f8f6f2;
+    border-left: 4px solid #4a7c59;
+    padding: 16px 20px;
+    margin: 16px 0;
+    border-radius: 0 8px 8px 0;
+    font-size: 14px;
+  }
+  .callout strong { color: #4a7c59; }
+  .decision {
+    background: #fff8e1;
+    border-left: 4px solid #e8a848;
+    padding: 16px 20px;
+    margin: 16px 0;
+    border-radius: 0 8px 8px 0;
+    font-size: 14px;
+  }
+  .decision strong { color: #c77c00; }
+  .tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px; margin-right: 6px; }
+  .tag-done { background: #e8f5e9; color: #2e7d32; }
+  .tag-todo { background: #e3f2fd; color: #1565c0; }
+  .tag-critical { background: #fce4ec; color: #c62828; }
+  ul { margin: 8px 0 16px 24px; font-size: 14px; }
+  li { margin-bottom: 6px; }
+
+  /* Tables */
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+  th { background: #f0ebe3; text-align: left; padding: 10px 12px; font-weight: 700; border-bottom: 2px solid #ddd; }
+  td { padding: 10px 12px; border-bottom: 1px solid #eee; vertical-align: top; }
+
+  /* Color Palette */
+  .palette-section { margin: 24px 0; }
+  .palette-row { display: flex; gap: 16px; flex-wrap: wrap; margin: 12px 0; }
+  .swatch-card {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+  }
+  .swatch {
+    width: 64px; height: 64px; border-radius: 12px; border: 1px solid rgba(0,0,0,0.08);
+  }
+  .swatch-name { font-size: 11px; font-weight: 600; color: #555; }
+  .swatch-hex { font-size: 10px; color: #aaa; }
+
+  /* Phone Mockups */
+  .mockup-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin: 24px 0;
+  }
+  .mockup-single {
+    max-width: 420px;
+    margin: 24px auto;
+  }
+  .phone-frame {
+    border-radius: 24px;
+    overflow: hidden;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.1);
+    border: 1px solid #e0e0e0;
+  }
+  .phone-title {
+    text-align: center;
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .phone-desc {
+    text-align: center;
+    font-size: 12px;
+    color: #888;
+    margin-bottom: 12px;
+  }
+
+  /* Screen Styles */
+  .screen { padding: 20px; }
+  .screen-warm { background: #faf8f5; }
+
+  .welcome-screen {
+    background: linear-gradient(160deg, #faf8f5 0%, #f0ebe3 100%);
+    padding: 40px 24px;
+    text-align: center;
+  }
+  .welcome-logo { font-size: 48px; margin-bottom: 12px; }
+  .welcome-title { font-size: 24px; font-weight: 800; margin-bottom: 4px; }
+  .welcome-sub { font-size: 13px; color: #888; margin-bottom: 32px; }
+  .path-btn {
+    display: block;
+    width: 100%;
+    padding: 18px 20px;
+    border-radius: 14px;
+    border: 1.5px solid #e8e2d9;
+    background: white;
+    text-align: left;
+    margin-bottom: 12px;
+    cursor: pointer;
+  }
+  .path-btn:hover { border-color: #4a7c59; background: #f5faf7; }
+  .path-emoji { font-size: 24px; margin-bottom: 4px; }
+  .path-title { font-size: 16px; font-weight: 700; color: #1a1a1a; }
+  .path-desc { font-size: 12px; color: #888; }
+
+  .greeting { font-size: 20px; font-weight: 700; margin-bottom: 2px; }
+  .date-line { font-size: 12px; color: #999; margin-bottom: 16px; }
+
+  .daily-banner {
+    background: linear-gradient(135deg, #4a7c59 0%, #3d6b4a 100%);
+    border-radius: 14px; padding: 18px; color: white; margin-bottom: 14px;
+  }
+  .daily-banner h3 { font-size: 16px; font-weight: 700; margin-bottom: 2px; color: white; margin-top: 0; }
+  .daily-banner p { font-size: 12px; opacity: 0.85; margin-bottom: 10px; }
+  .banner-pills { display: flex; gap: 8px; font-size: 11px; font-weight: 600; }
+  .banner-pills span { background: rgba(255,255,255,0.2); padding: 3px 10px; border-radius: 20px; }
+
+  .section-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #999; margin: 14px 0 8px; }
+
+  .qa-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+  .qa-card {
+    background: white; border: 1.5px solid #e8e2d9; border-radius: 12px; padding: 14px 12px;
+  }
+  .qa-card:hover { border-color: #4a7c59; }
+  .qa-icon { font-size: 18px; margin-bottom: 4px; }
+  .qa-title { font-size: 13px; font-weight: 700; color: #1a1a1a; margin-bottom: 2px; }
+  .qa-desc { font-size: 11px; color: #888; }
+
+  .news-box {
+    background: white; border: 1.5px solid #e8e2d9; border-radius: 12px; padding: 14px;
+  }
+  .news-box h4 { font-size: 13px; font-weight: 700; margin-bottom: 8px; }
+  .news-item { font-size: 11px; color: #666; padding: 4px 0; display: flex; gap: 6px; align-items: center; }
+  .nbadge { font-size: 9px; font-weight: 700; text-transform: uppercase; padding: 2px 6px; border-radius: 4px; }
+  .nbadge-new { background: #e8f5e9; color: #2e7d32; }
+  .nbadge-soon { background: #fff3e0; color: #e65100; }
+
+  .train-item {
+    background: white; border: 1.5px solid #e8e2d9; border-radius: 12px; padding: 14px; margin-bottom: 8px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .train-item:hover { border-color: #4a7c59; }
+  .ti-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+  .ti-green { background: #e8f5e9; }
+  .ti-amber { background: #fff3e0; }
+  .ti-blue { background: #e3f2fd; }
+  .ti-red { background: #fce4ec; }
+  .ti-purple { background: #f3e5f5; }
+  .ti-title { font-size: 14px; font-weight: 700; color: #1a1a1a; }
+  .ti-desc { font-size: 11px; color: #888; }
+  .ti-tag { font-size: 9px; font-weight: 600; padding: 2px 8px; border-radius: 10px; display: inline-block; margin-top: 2px; }
+  .ti-tag-rec { background: #e8f5e9; color: #2e7d32; }
+  .ti-tag-time { background: #f0f0f0; color: #666; }
+
+  .bottom-nav-mock {
+    display: flex; justify-content: space-around; padding: 8px 0 12px;
+    border-top: 1px solid #e8e2d9; font-size: 9px; text-align: center; background: #faf8f5;
+  }
+  .bnav { color: #999; }
+  .bnav.active { color: #4a7c59; font-weight: 700; }
+  .bnav-icon { font-size: 16px; display: block; }
+
+  /* Feedback */
+  .fb-q { margin-bottom: 14px; }
+  .fb-label { font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+  .fb-opts { display: flex; gap: 6px; }
+  .fb-opt {
+    flex: 1; padding: 8px 4px; text-align: center; border: 1.5px solid #e8e2d9;
+    border-radius: 8px; background: white; font-size: 11px; font-weight: 600; color: #666;
+  }
+  .fb-opt.sel { border-color: #4a7c59; background: #e8f5e9; color: #2e7d32; }
+  .fb-ta {
+    width: 100%; min-height: 60px; border: 1.5px solid #e8e2d9; border-radius: 8px;
+    padding: 10px; font-size: 12px; font-family: inherit; background: white;
+  }
+  .fb-btn {
+    width: 100%; padding: 12px; background: #4a7c59; color: white; border: none;
+    border-radius: 10px; font-size: 14px; font-weight: 700; margin-top: 8px;
+  }
+
+  /* Nav compare */
+  .nav-compare { margin: 16px 0; }
+  .nav-bar-mock {
+    display: flex; justify-content: space-around; background: #f8f6f2; border: 1px solid #e8e2d9;
+    border-radius: 10px; padding: 10px 6px; font-size: 10px; text-align: center; margin: 8px 0;
+  }
+  .nav-bar-mock span { color: #999; }
+  .nav-bar-mock .dup { color: #e53935; text-decoration: line-through; }
+  .nav-bar-mock .act { color: #4a7c59; font-weight: 700; }
+  .nav-label { font-size: 12px; font-weight: 600; color: #888; margin-bottom: 4px; }
+
+  .divider { border: none; border-top: 1px solid #e8e2d9; margin: 32px 0; }
+
+  /* Print styles */
+  @media print {
+    .doc { max-width: 100%; padding: 20px; }
+    .mockup-grid { page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="doc">
+
+<h1>Poker Trainer — UX Vision</h1>
+<p class="subtitle">Two Paths, One App &middot; v2 &middot; April 5, 2026 &middot; For review: Chris &amp; Chuck</p>
+
+<!-- ============================================ -->
+<h2>1. The Core Insight</h2>
+<p>Not every player wants the same thing. A casual bar player who shows up Tuesday nights wants to have fun and get a little better. A grinder studying ranges and plugging leaks wants focused, efficient training. The app needs to serve both without forcing one through the other's experience.</p>
+<p>The Daily Hands challenge is the bridge. It's the Wordle mechanic: same 5 hands for everyone, every day. Streaks, IQ scores, leaderboards. That's the daily reason to open the app regardless of which path you're on.</p>
+
+<!-- ============================================ -->
+<h2>2. Proposed Color Direction: "Wordle for Poker"</h2>
+<p>The current dark charcoal theme feels cold and intimidating. We're shifting to a bright, warm palette inspired by Wordle's clean aesthetic combined with poker table greens and golds. The goal: an app that feels inviting enough to open every day.</p>
+
+<div class="palette-section">
+  <h3>Color Palette: "Poker Night"</h3>
+  <div class="palette-row">
+    <div class="swatch-card"><div class="swatch" style="background:#faf8f5"></div><div class="swatch-name">Background</div><div class="swatch-hex">#faf8f5</div></div>
+    <div class="swatch-card"><div class="swatch" style="background:#f0ebe3"></div><div class="swatch-name">Surface</div><div class="swatch-hex">#f0ebe3</div></div>
+    <div class="swatch-card"><div class="swatch" style="background:#ffffff; border: 1.5px solid #e8e2d9"></div><div class="swatch-name">Card</div><div class="swatch-hex">#ffffff</div></div>
+    <div class="swatch-card"><div class="swatch" style="background:#4a7c59"></div><div class="swatch-name">Felt Green</div><div class="swatch-hex">#4a7c59</div></div>
+    <div class="swatch-card"><div class="swatch" style="background:#e8a848"></div><div class="swatch-name">Gold</div><div class="swatch-hex">#e8a848</div></div>
+    <div class="swatch-card"><div class="swatch" style="background:#6b7db3"></div><div class="swatch-name">Cool Accent</div><div class="swatch-hex">#6b7db3</div></div>
+    <div class="swatch-card"><div class="swatch" style="background:#e53935"></div><div class="swatch-name">Wrong/Leak</div><div class="swatch-hex">#e53935</div></div>
+    <div class="swatch-card"><div class="swatch" style="background:#1a1a1a"></div><div class="swatch-name">Text</div><div class="swatch-hex">#1a1a1a</div></div>
+    <div class="swatch-card"><div class="swatch" style="background:#e8e2d9"></div><div class="swatch-name">Border</div><div class="swatch-hex">#e8e2d9</div></div>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<h2>3. First Visit: The Fork</h2>
+<p>New users see a welcome screen that does two things: explains what the app is, and asks one question that shapes their entire experience.</p>
+
+<div class="mockup-single">
+  <div class="phone-title">Welcome Screen (First Visit)</div>
+  <div class="phone-desc">One question forks the experience</div>
+  <div class="phone-frame">
+    <div class="welcome-screen">
+      <div class="welcome-logo">♠</div>
+      <div class="welcome-title">Poker Trainer</div>
+      <div class="welcome-sub">Get better at poker, 5 minutes at a time</div>
+      <div class="path-btn">
+        <div class="path-emoji">🎲</div>
+        <div class="path-title">I play for fun</div>
+        <div class="path-desc">I want to get better at my weekly game</div>
+      </div>
+      <div class="path-btn">
+        <div class="path-emoji">🎯</div>
+        <div class="path-title">I'm here to train</div>
+        <div class="path-desc">I want to study ranges and fix my leaks</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p>This choice sets their <strong>player mode</strong> (stored in profile, changeable in settings). It determines which home screen they see and how the app communicates with them.</p>
+
+<div class="callout"><strong>Guest users</strong> see this welcome screen every time they visit, unless we can identify returning guests via device fingerprint (we already track this). If we recognize the device, we can remember their choice.</div>
+
+<!-- ============================================ -->
+<h2>4. Path A: The Casual Player</h2>
+<p>The player who tapped "I play for fun." Their home screen is the Wordle screen: bright, inviting, low pressure. The Daily Hands challenge is front and center. Learning the basics lives here because casual players are the ones who need it. Grinders already know this material.</p>
+
+<div class="mockup-single">
+  <div class="phone-title">Play Home (Casual Player)</div>
+  <div class="phone-desc">Daily challenge + basics + fun. No homework.</div>
+  <div class="phone-frame">
+    <div class="screen screen-warm">
+      <div class="greeting">Hey Chris 👋</div>
+      <div class="date-line">Saturday, April 5 &middot; 5-day streak 🔥</div>
+      <div class="daily-banner">
+        <h3>Today's Daily Hands</h3>
+        <p>5 hands, 60 seconds &mdash; can you beat yesterday?</p>
+        <div class="banner-pills"><span>🔥 5 streak</span><span>🧠 140 IQ</span><span>👑 #1 of 12</span></div>
+      </div>
+      <div class="section-label">What do you want to do?</div>
+      <div class="qa-grid">
+        <div class="qa-card"><div class="qa-icon">📘</div><div class="qa-title">Learn the Basics</div><div class="qa-desc">Positions, terms, core concepts</div></div>
+        <div class="qa-card"><div class="qa-icon">⚡</div><div class="qa-title">Quick Drill</div><div class="qa-desc">15 random hands, just for fun</div></div>
+        <div class="qa-card"><div class="qa-icon">📊</div><div class="qa-title">My Stats</div><div class="qa-desc">Streak, IQ trend, results</div></div>
+        <div class="qa-card"><div class="qa-icon">🎯</div><div class="qa-title">Try Training Mode</div><div class="qa-desc">See how serious players train</div></div>
+      </div>
+      <div class="news-box">
+        <h4>What's New</h4>
+        <div class="news-item"><span class="nbadge nbadge-new">NEW</span> Short stack jam/fold drills</div>
+        <div class="news-item"><span class="nbadge nbadge-soon">SOON</span> League leaderboards next week</div>
+      </div>
+    </div>
+    <div class="bottom-nav-mock">
+      <div class="bnav active"><span class="bnav-icon">🏠</span>Home</div>
+      <div class="bnav"><span class="bnav-icon">🃏</span>Play</div>
+      <div class="bnav"><span class="bnav-icon">📊</span>Progress</div>
+      <div class="bnav"><span class="bnav-icon">⚙️</span>More</div>
+    </div>
+  </div>
+</div>
+
+<h3>What casual players see:</h3>
+<ul>
+  <li>Daily Hands challenge (the main event)</li>
+  <li>Streak, IQ, and Rank gamification</li>
+  <li>Learn the Basics (positions, terminology, core concepts)</li>
+  <li>Quick Drill for extra practice</li>
+  <li>"Try Training Mode" preview bubble (see how grinders train, but reverts to Play mode next visit)</li>
+  <li>What's New / What's Coming section</li>
+</ul>
+
+<h3>What casual players DON'T get:</h3>
+<ul>
+  <li>No homework. No "you should drill this." No guilt.</li>
+  <li>No leak analysis or player profile (unless they upgrade)</li>
+  <li>No assessment pushed on them (but optionally offered after X daily plays)</li>
+</ul>
+
+<div class="callout"><strong>Assessment gating:</strong> After a casual player completes a milestone (e.g., 10 daily hand sessions), offer them an optional assessment: "You've played 50 hands &mdash; want to see where you stand? Take a free skills check." No pressure, just an invitation.</div>
+
+<p>The tone is fun and encouraging: "Nice streak!" not "Your early position discipline needs work."</p>
+
+<!-- ============================================ -->
+<h2>5. Path B: The Serious Player</h2>
+<p>The player who tapped "I'm here to train." Their home screen is a focused session launcher. They have 10-15 minutes and want to laser in on exactly what they need to work on. No clicking through tabs. Pick a focus, see the time commitment, go.</p>
+
+<div class="mockup-single">
+  <div class="phone-title">Training Hub (Serious Player)</div>
+  <div class="phone-desc">"I have 10 minutes. What should I work on?"</div>
+  <div class="phone-frame">
+    <div class="screen screen-warm">
+      <div class="greeting">Welcome back, Chris</div>
+      <div class="date-line">Saturday, April 5 &middot; 5-day streak 🔥 &middot; IQ 140</div>
+      <div class="daily-banner">
+        <h3>Today's Daily Hands</h3>
+        <p>5 hands, 60 seconds &mdash; everyone plays the same hands</p>
+        <div class="banner-pills"><span>🔥 5 streak</span><span>🧠 140 IQ</span><span>👑 #1 of 12</span></div>
+      </div>
+      <div class="section-label">Training Sessions</div>
+      <div class="train-item">
+        <div class="ti-icon ti-green">🎯</div>
+        <div><div class="ti-title">Skills Assessment</div><div class="ti-desc">20 dynamic spots &mdash; find your leaks</div><span class="ti-tag ti-tag-time">~10 min</span></div>
+      </div>
+      <div class="train-item">
+        <div class="ti-icon ti-red">🔧</div>
+        <div><div class="ti-title">Fix My Leaks</div><div class="ti-desc">Drills targeting your weakest categories</div><span class="ti-tag ti-tag-rec">Recommended</span></div>
+      </div>
+      <div class="train-item">
+        <div class="ti-icon ti-amber">⚡</div>
+        <div><div class="ti-title">Quick Mix Drill</div><div class="ti-desc">15 random hands across all categories</div><span class="ti-tag ti-tag-time">~5 min</span></div>
+      </div>
+      <div class="train-item">
+        <div class="ti-icon ti-blue">📍</div>
+        <div><div class="ti-title">Position Drills</div><div class="ti-desc">Pick a position: UTG, HJ, CO, BTN, SB, BB</div><span class="ti-tag ti-tag-time">~5 min</span></div>
+      </div>
+      <div class="train-item">
+        <div class="ti-icon ti-purple">💣</div>
+        <div><div class="ti-title">Short Stack Jam/Fold</div><div class="ti-desc">10bb and 15bb push-or-fold decisions</div><span class="ti-tag ti-tag-time">~5 min</span></div>
+      </div>
+    </div>
+    <div class="bottom-nav-mock">
+      <div class="bnav active"><span class="bnav-icon">🏠</span>Home</div>
+      <div class="bnav"><span class="bnav-icon">🃏</span>Play</div>
+      <div class="bnav"><span class="bnav-icon">💪</span>Train</div>
+      <div class="bnav"><span class="bnav-icon">📊</span>Progress</div>
+      <div class="bnav"><span class="bnav-icon">⚙️</span>More</div>
+    </div>
+  </div>
+</div>
+
+<h3>What serious players get that casual players don't:</h3>
+<ul>
+  <li><strong>Player Profile</strong> &mdash; built from activity data. Style analysis: "You tend to play too loose from early position." Leak map showing strong vs. weak spots by position and stack depth.</li>
+  <li><strong>Training Recommendations</strong> &mdash; "Based on your last 50 hands, here's what to work on today"</li>
+  <li><strong>Detailed Spot Review</strong> &mdash; after every drill, see what you got wrong and why</li>
+  <li><strong>Advanced Concepts</strong> &mdash; 3-bet defense, squeeze spots, ICM basics (future content)</li>
+</ul>
+
+<p>The tone is direct and coaching: "Your UTG discipline dropped 8% this week &mdash; drill it."</p>
+
+<!-- ============================================ -->
+<h2>6. Navigation: Before &amp; After</h2>
+
+<div class="nav-compare">
+  <div class="nav-label">Current (8 tabs, Home = Play duplicate):</div>
+  <div class="nav-bar-mock">
+    <span class="dup">♠ Home</span><span class="act">🃏 Play</span><span>📖 Learn</span><span>🎯 Assess</span><span>⚡ Drills</span><span>📊 Progress</span><span>⚙️ Settings</span><span>👑 Coach</span>
+  </div>
+  <div class="nav-label" style="margin-top:16px">Proposed for casual players (4 tabs):</div>
+  <div class="nav-bar-mock">
+    <span class="act">🏠 Home</span><span>🃏 Play</span><span>📊 Progress</span><span>⚙️ More</span>
+  </div>
+  <div class="nav-label" style="margin-top:16px">Proposed for serious players (5 tabs):</div>
+  <div class="nav-bar-mock">
+    <span class="act">🏠 Home</span><span>🃏 Play</span><span>💪 Train</span><span>📊 Progress</span><span>⚙️ More</span>
+  </div>
+</div>
+
+<table>
+  <tr><th>Tab</th><th>Casual Player</th><th>Serious Player</th></tr>
+  <tr><td><strong>Home</strong></td><td>Play Home: daily challenge, basics, fun</td><td>Training Hub: focused session launcher</td></tr>
+  <tr><td><strong>Play</strong></td><td colspan="2">Daily Hands (same for everyone &mdash; the Wordle moment)</td></tr>
+  <tr><td><strong>Train</strong></td><td>Hidden (4-tab nav)</td><td>Assessment, drills, leak fix, position drills</td></tr>
+  <tr><td><strong>Progress</strong></td><td>Streak, IQ, simple stats</td><td>Full leak breakdown, player profile, trends</td></tr>
+  <tr><td><strong>More</strong></td><td colspan="2">Settings (inc. mode toggle), Feedback, Coach (admin), About</td></tr>
+</table>
+
+<!-- ============================================ -->
+<h2>7. Scoring Philosophy: Best Answers &amp; Acceptable Plays</h2>
+<p>Poker is a game of making decisions with incomplete information. While some decisions are clearly right or wrong, many spots have a best answer and an acceptable answer. The app should reflect this reality.</p>
+
+<div class="callout"><strong>Current behavior:</strong> The scoring system already supports three tiers: CORRECT (1.0 pts), ACCEPTABLE (0.7 pts), and LEAK (0.0 pts). But the feedback doesn't communicate this well.</div>
+
+<h3>Proposed feedback language:</h3>
+<table>
+  <tr><th>Score</th><th>Current Message</th><th>Proposed Message</th></tr>
+  <tr><td>Correct</td><td>"Correct!"</td><td>"That's the play." + brief explanation why</td></tr>
+  <tr><td>Acceptable</td><td>"Acceptable"</td><td>"I see where you're coming from &mdash; that's an acceptable play. But here's the stronger move and why..." + explanation of the edge</td></tr>
+  <tr><td>Leak</td><td>"Leak Found"</td><td>"Not this time. Here's why, and what to look for in this spot..." + clear explanation</td></tr>
+</table>
+
+<p>This approach respects the player's reasoning while teaching them to find the edge. It's coaching, not quizzing.</p>
+
+<!-- ============================================ -->
+<h2>8. Dynamic Hands: What Needs to Change</h2>
+
+<table>
+  <tr><th>Mode</th><th>Current</th><th>Needed</th></tr>
+  <tr><td>Assessment</td><td><span class="tag tag-critical">Hardcoded</span> Same 20 hands every time</td><td><span class="tag tag-todo">Build</span> Dynamic generator, 40+ pool, pick 20</td></tr>
+  <tr><td>Drills</td><td><span class="tag tag-done">Dynamic</span> Different every time</td><td>No changes needed</td></tr>
+  <tr><td>Daily Hands</td><td><span class="tag tag-done">Dynamic</span> Date-seeded, same for everyone per day</td><td>Add poker table visualization for consistency</td></tr>
+  <tr><td>Learn Quizzes</td><td><span class="tag tag-critical">Hardcoded</span> Same every time</td><td>Lower priority &mdash; educational content, not assessment</td></tr>
+</table>
+
+<h3>Scenario Validation Rules (Critical)</h3>
+<p>Every dynamically generated hand must pass validation before being presented to the player. The logic must be contextual to position. Example of a current flaw: "Everyone folds to you in UTG" makes no sense because UTG is first to act &mdash; no one has had the chance to fold yet.</p>
+
+<p>Proposed validation rules the generator must enforce:</p>
+<ul>
+  <li><strong>UTG/UTG+1:</strong> Can only see "unopened" scenarios (they are first to act). Never "folds to you" or "facing open."</li>
+  <li><strong>Middle positions (MP, LJ, HJ):</strong> Can see "unopened" (everyone before them folded) or "facing open" (earlier position raised).</li>
+  <li><strong>Late positions (CO, BTN):</strong> Can see "unopened," "facing open" from any earlier position, or "facing multiple opens."</li>
+  <li><strong>Blinds (SB, BB):</strong> Can see "unopened" (rare &mdash; folded to SB), "facing open" from any position, or "facing raise + callers."</li>
+  <li><strong>Stack depth logic:</strong> At 10bb, there is no "raise" &mdash; it's jam or fold. At 15bb, raise is possible but jam is often correct. At 20bb+, full raise/fold/call logic applies.</li>
+  <li><strong>Action consistency:</strong> The available actions must match the scenario. Don't offer "Call" when no one has bet. Don't offer "Raise" at 10bb.</li>
+  <li><strong>Reject ambiguous hands:</strong> If a hand has no clear best answer backed by the GTO range tables, reject it and generate a new one.</li>
+</ul>
+
+<div class="callout"><strong>Build approach:</strong> Create a validation layer that tests every generated hand against these rules. The generator creates a candidate hand, the validator checks it. If it fails, reject and regenerate. Log rejections for debugging. This ensures every hand the player sees makes perfect sense.</div>
+
+<!-- ============================================ -->
+<h2>9. Data-Driven Player Profile (Serious Players)</h2>
+
+<h3>What we track:</h3>
+<ul>
+  <li>Every hand decision: position, stack depth, action taken, correct action, score (correct/acceptable/leak)</li>
+  <li>Accuracy by position (UTG through BB)</li>
+  <li>Accuracy by stack depth (10bb, 15bb, 20bb, 30bb)</li>
+  <li>Accuracy by scenario type (unopened, facing open, facing 3-bet)</li>
+  <li>Accuracy by leak category (9 categories)</li>
+  <li>Trends over time (7-day, 30-day)</li>
+</ul>
+
+<h3>What we surface:</h3>
+<ul>
+  <li><strong>Play Style Summary:</strong> "Tight-passive from early position, loose-aggressive on the button" &mdash; derived from decision patterns</li>
+  <li><strong>Leak Map:</strong> Visual grid showing strong vs. weak spots by position &times; stack depth</li>
+  <li><strong>Top 3 Leaks:</strong> Weakest categories with specific drill recommendations. "Your early position discipline is at 58% &mdash; drill 15 hands from UTG."</li>
+  <li><strong>Improvement Trend:</strong> "Your accuracy improved from 62% to 74% this month"</li>
+  <li><strong>Training Recommendations:</strong> "Based on your data, here's what to work on today"</li>
+</ul>
+
+<h3>What casual players DON'T see:</h3>
+<p>No homework. No guilt. Just the daily challenge, the streak, and gentle encouragement. Casual players don't need a leak analysis telling them they're bad at blind defense. They're here to have fun.</p>
+
+<h3>Moving profile data to Supabase</h3>
+<p>Currently all progress data lives in the browser's localStorage. This means switching browsers or clearing cache loses everything. Moving to Supabase means:</p>
+<ul>
+  <li><strong>Benefit:</strong> Data persists across devices. Play on phone, check progress on desktop.</li>
+  <li><strong>Benefit:</strong> We can build real analytics and player profiles from the data.</li>
+  <li><strong>Benefit:</strong> Enables cross-player comparisons and league-level stats.</li>
+  <li><strong>Impact:</strong> Requires new Supabase tables for drill history, hand-level decisions, and computed stats. RLS policies for privacy. Migration path for existing localStorage data.</li>
+  <li><strong>Impact:</strong> Guests would continue using localStorage. Only registered users get cloud persistence.</li>
+  <li><strong>Effort:</strong> Medium &mdash; 2-3 dev sessions to build tables, migrate, and wire up.</li>
+</ul>
+
+<!-- ============================================ -->
+<h2>10. Mode Switching &amp; Guest Behavior</h2>
+
+<h3>Casual &rarr; Serious</h3>
+<ul>
+  <li>"Try Training Mode" bubble on the casual home screen lets them preview the training hub</li>
+  <li>They can explore freely, but next visit they revert to Play mode</li>
+  <li>Permanent switch available via a toggle in Settings ("Player Mode: Casual / Serious")</li>
+  <li>After milestones (e.g., 10 daily sessions, 5-day streak), prompt them: "Ready to level up? Switch to Training Mode."</li>
+</ul>
+
+<h3>Serious &rarr; Casual</h3>
+<ul>
+  <li>Same Settings toggle. No judgment.</li>
+</ul>
+
+<h3>Guest behavior</h3>
+<ul>
+  <li>See the welcome screen ("How do you play poker?") every time they visit</li>
+  <li>Exception: if we recognize the device fingerprint (we already track this), remember their choice</li>
+  <li>Guest data stays in localStorage. Prompt to sign in to save progress.</li>
+</ul>
+
+<!-- ============================================ -->
+<h2>11. Simplified Feedback</h2>
+<p>Current feedback form has 5 rating questions + freeform + name/email. Too much friction. New version: 4 questions, 30 seconds.</p>
+
+<div class="mockup-single">
+  <div class="phone-title">Simplified Feedback</div>
+  <div class="phone-desc">4 questions, 30 seconds. That's it.</div>
+  <div class="phone-frame">
+    <div class="screen screen-warm">
+      <div class="greeting" style="font-size:18px">Quick Feedback</div>
+      <div class="date-line">Takes 30 seconds &mdash; helps us build this for you</div>
+      <div class="fb-q"><div class="fb-label">Is this your first time?</div><div class="fb-opts"><div class="fb-opt sel">Yes</div><div class="fb-opt">No</div></div></div>
+      <div class="fb-q"><div class="fb-label">Did you have fun?</div><div class="fb-opts"><div class="fb-opt">😐 Meh</div><div class="fb-opt sel">😊 Yeah!</div><div class="fb-opt">🤩 Loved it</div></div></div>
+      <div class="fb-q"><div class="fb-label">Will you be back?</div><div class="fb-opts"><div class="fb-opt">Probably not</div><div class="fb-opt sel">Maybe</div><div class="fb-opt">Definitely</div></div></div>
+      <div class="fb-q"><div class="fb-label">Any suggestions?</div><textarea class="fb-ta" placeholder="What would make this awesome for you?"></textarea></div>
+      <button class="fb-btn">Send Feedback</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<h2>12. Other Fixes Identified (April 5)</h2>
+
+<table>
+  <tr><th>Issue</th><th>Status</th><th>Priority</th></tr>
+  <tr><td><strong>Session timeout / frozen screen</strong> &mdash; inactive users return to a hung app</td><td><span class="tag tag-done">Fixed</span> Added visibility change listener for session refresh</td><td>Critical</td></tr>
+  <tr><td><strong>Table visualization inconsistency</strong> &mdash; Assessment and Drills show the poker table; Daily Hands and Learn don't</td><td><span class="tag tag-todo">To Do</span></td><td>High</td></tr>
+  <tr><td><strong>Spot review doesn't show wrong answers</strong> &mdash; review page shows correct answers only, not what user picked</td><td><span class="tag tag-todo">To Do</span></td><td>High</td></tr>
+  <tr><td><strong>Leaderboard always shows #1</strong> &mdash; needs "Place X of Y"</td><td><span class="tag tag-todo">To Do</span></td><td>Medium</td></tr>
+  <tr><td><strong>Settings mostly placeholder</strong> &mdash; Complexity Mode and Explanations toggles aren't wired up</td><td><span class="tag tag-todo">To Do</span></td><td>Low</td></tr>
+  <tr><td><strong>Progress data in localStorage only</strong> &mdash; lost on browser switch</td><td><span class="tag tag-todo">To Do</span></td><td>Medium (blocks player profile)</td></tr>
+  <tr><td><strong>GitHub repo is public</strong> &mdash; all source code visible</td><td><span class="tag tag-todo">Discuss</span></td><td>Chris + Chuck decision</td></tr>
+</table>
+
+<!-- ============================================ -->
+<h2>13. Decisions Needed (Chris + Chuck)</h2>
+
+<div class="decision"><strong>1. Color direction:</strong> Does the warm light palette shown here feel right? Or do we want to explore further?</div>
+<div class="decision"><strong>2. Two-path model:</strong> Casual vs. serious &mdash; agree on the fork concept and what each path includes?</div>
+<div class="decision"><strong>3. Navigation structure:</strong> 4 tabs for casual, 5 for serious. Agree?</div>
+<div class="decision"><strong>4. Assessment randomization:</strong> Green light to replace the hardcoded 20 with dynamic generation + validation?</div>
+<div class="decision"><strong>5. Supabase migration:</strong> Move progress data to the cloud? Enables player profiles but takes 2-3 dev sessions.</div>
+<div class="decision"><strong>6. GitHub repo:</strong> Make it private? Quick toggle, free for personal accounts.</div>
+<div class="decision"><strong>7. App name:</strong> Still need to pick from the brainstorm list and secure a domain.</div>
+
+<hr class="divider">
+
+<p style="font-size:12px; color:#999; text-align:center; margin-top:24px;">
+  Poker Trainer UX Vision v2 &middot; Drafted April 5, 2026 &middot; Chris Thatcher &amp; Claude
+</p>
+
+</div>
+</body>
+</html>

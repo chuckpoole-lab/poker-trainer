@@ -1,180 +1,177 @@
 # Poker Trainer — Project Plan & Roadmap
-## Updated April 2, 2026
+## Updated April 5, 2026
 
 ---
 
-## CURRENT STATUS: Ready for User Testing
+## CURRENT STATUS: UX Overhaul Phase
 
-The app is live with Play mode (Daily Hands, bonus rounds, onboarding, feedback collection) and Train mode (Learn, Assess, Drills, Progress). The scenario pipeline generates hundreds of unique hands from GTO range tables. Tester feedback system is in place.
+The app is live and in user testing, but retention is the #1 problem — people visit but don't come back. Today's session produced a comprehensive UX vision that redefines the app around two player paths (casual vs serious) with a warm, Wordle-inspired visual design. The session timeout bug that was freezing inactive tabs has been fixed. Next step: get Chuck's sign-off on the UX vision, then begin implementation.
+
+**UX Vision Document:** `Poker-Trainer-UX-Vision-v2.html` (sent to Chuck for review)
 
 ---
 
-## IMMEDIATE PRIORITIES (This Week)
+## THE TWO-PATH VISION
 
-### 1. Recruit & Launch User Testing
-- Target: 8-12 testers from bar poker network
-- Mix: ~5 casual bar players, ~4 competitive league players, ~2 online qualifiers
-- Share app link + brief "play for a few days, then leave feedback" instructions
-- Monitor feedback in admin dashboard
-- Key metric: "Would you recommend this to someone in your league?" (Q4)
+### Core Insight
+Not every player wants the same thing. A casual bar player wants fun and a reason to come back. A grinder wants focused, efficient training. The app serves both — but not by forcing one through the other's experience.
 
-### 2. NPPT League Integration
-Build the framework for the first league partnership.
+### First Visit: The Fork
+New users see a welcome screen with one question:
+> **How do you play poker?**
+> - "I play for fun" → Casual path
+> - "I'm here to train" → Serious path
 
-#### NPPT Structure (from npptpoker.com):
-- **13 Regions:** Palm Beach FL, Southwest FL, Central FL, Jacksonville FL, Broward/Dade FL, Treasure Coast FL, Gainesville FL, Tallahassee FL, Staten Island NY, Long Island NY, Coastal Carolina NC, New Jersey NJ, Chattanooga TN
-- **Venues:** Organized by name, city, and day of week
-- **Seasons:** Defined date ranges (current: Season 1, 2026)
-- **Leaderboards:** Points-based rankings by region and overall
-- **Events:** Weekly games, special events, championships, BPO qualifiers
+This sets their **player mode** (stored in profile, changeable in settings).
 
-#### Database Schema Needed:
-- `league_regions` table: league_id, region_name, region_slug, state
-- `league_venues` table: region_id, venue_name, address, city, game_days, game_times
-- `user_league_profile` table: user_id, league_id, region_id, venue_ids (array), nickname, joined_at
-- Update `profiles` to support multiple league memberships
+### Path A: Casual Player ("I play for fun")
+- **Home:** Play Home — Daily Hands front and center, streak/IQ/rank, Learn the Basics, Quick Drill
+- **Tone:** Fun, encouraging, light. "Nice streak!" not "Your early position discipline needs work."
+- **Does NOT see:** Skills Assessment, leak analysis, position drills, player profile
 
-#### Registration Flow:
-1. User signs up / logs in
-2. "Join a league" option → select league (NPPT)
-3. Select your region (dropdown of NPPT regions)
-4. Select your venue(s) (multi-select from venues in that region)
-5. Enter your league nickname (the name that shows on BPO/online play)
-6. Confirmation → player appears in league leaderboard with nickname
+### Path B: Serious Player ("I'm here to train")
+- **Home:** Training Hub — Daily Hands (one option, not the whole screen), Skills Assessment, Fix My Leaks, Position Drills, Short Stack Jam/Fold
+- **Tone:** Direct, efficient, coaching. "Your UTG discipline dropped 8% this week — drill it."
+- **Gets:** Player Profile with style analysis, Leak Tracking with trends, Training Recommendations, Detailed Spot Review
 
-#### Leaderboard Enhancements:
-- Filter by region within a league
-- Filter by venue within a region
-- Show nickname instead of display_name for league context
-- "Players at your venue" section on Play home screen
+### The Bridge: Daily Hands
+Both paths share the daily challenge — 5 hands, same for everyone, date-seeded. This is the Wordle mechanic that brings people back every day.
 
-### 3. League Value Proposition
-Critical question: Why would a league operator partner with us?
+---
 
-#### Data Valuable to League Operators:
-- **Player engagement metrics:** How many players are actively using the app, how often, retention rates
-- **Skill distribution:** What percentage of their players are beginners vs intermediate vs advanced — helps them design better tournament structures
-- **Regional activity:** Which regions/venues have the most engaged players — identifies growth opportunities and dead zones
-- **Player retention correlation:** Do players who use the trainer attend more live events? (This is the killer metric)
-- **New player pipeline:** How many new players discover the league through the app
-- **Content engagement:** Which training modules are most popular — tells them what their players want to learn
+## IMMEDIATE PRIORITIES (Next 1-2 Weeks)
 
-#### How Adoption Improves Player Retention & Participation:
-- **Beginners stay longer:** The #1 reason casual players quit leagues is feeling lost. Onboarding + daily challenges build confidence
-- **Social hook:** Shareable daily scores create conversation at the table ("Did you get today's daily right?")
-- **League identity:** Branded leaderboards make players feel part of something bigger than one Tuesday night game
-- **Skill development:** Players who improve keep playing. Players who don't improve stop showing up
-- **Venue discovery:** New players can find venues near them through the app — drives foot traffic
+### Priority 1: UX Overhaul (Retention is the #1 problem)
 
-#### Partnership Model (to discuss):
-- Free tier: League gets listed, players can affiliate, basic leaderboard
-- Premium tier: Branded app experience, detailed analytics dashboard, custom tournaments
-- Revenue share: If/when app monetizes, league partners get a cut of their players' subscriptions
+#### 1a. Visual Redesign — Warm Wordle-inspired palette
+- Cream background (#faf8f5), felt green accents (#4a7c59), gold highlights (#e8a848)
+- Replace dark charcoal theme across all screens
+- Keep poker table green felt and brown rail — extend that warmth everywhere
+- Mockup approved direction: `wordle-poker-mockup.html`
 
-### 4. App Naming
-The app needs a name before we approach leagues. Current working title: "Poker Trainer"
+#### 1b. Navigation Redesign — 5 tabs, clear purpose
+| Tab | Casual Player | Serious Player |
+|-----|--------------|----------------|
+| Home | Play Home (daily challenge, basics, fun) | Training Hub (focused session launcher) |
+| Play | Daily Hands (the Wordle moment) | Daily Hands (same) |
+| Train | Hidden or simplified | Assessment, Drills, Leak Fix, Position Drills |
+| Progress | Streak, IQ, simple stats | Full leak breakdown, player profile, trends |
+| More | Settings, Feedback, About | Settings, Feedback, Coach (admin), About |
 
-#### Naming Criteria:
-- Short, memorable, easy to say at a poker table
-- Available as a domain (.com or .app)
-- Not already a poker product
-- Works for both casual and serious audiences
-- Should suggest "practice" or "improvement" without being intimidating
+#### 1c. Session Timeout Fix
+- **DONE:** visibilitychange listener + refreshSession() in auth-context.tsx
+- Needs: commit, push, deploy to Vercel
 
-#### Name Brainstorm (to discuss with Chuck):
-- PokerPulse — daily engagement, always alive
-- FeltIQ — poker table + intelligence
-- PokerReps — like gym reps, practice makes better
-- TableSmart — smart decisions at the table
-- HandCheck — quick, action-oriented
-- DailyFelt — daily practice on the felt
-- PokerDrip — steady improvement, drip by drip
-- SharkSchool — aspirational but fun
-- CardSense — developing intuition
-- FoldOrFire — the core decision
+#### 1d. Table Visualization Consistency
+- Show poker table on ALL hand decision screens (Daily Hands currently missing it)
+
+### Priority 2: Content & Gameplay Fixes
+
+#### 2a. Assessment Randomization (CRITICAL)
+- Assessment is same 20 hands every time — testers notice repeats
+- Build dynamic generator from range tables (like drills already have)
+- Pool of 40+ spots, randomly pick 20 per session
+
+#### 2b. Spot Review — Show what users got wrong
+- After drills/assessment/daily: show "You chose X → Correct answer was Y" with explanation
+- Infrastructure exists (answers stored) — just needs UI
+
+#### 2c. Progress Tab — Real value
+- Migrate from localStorage to Supabase
+- Add IQ trend over time (7-day, 30-day)
+- Add leak breakdown from drills (not just assessments)
+- Add "recommended next action" based on weakest category
+
+### Priority 3: Feedback & Polish
+
+#### 3a. Simplified Feedback Form
+Replace 5-question survey with:
+1. Is this your first time? (Yes / No)
+2. Did you have fun? (Meh / Yeah! / Loved it)
+3. Will you be back? (Probably not / Maybe / Definitely)
+4. Any suggestions? (freeform)
+
+#### 3b. Settings — Wire up or remove placeholders
+#### 3c. Leaderboard — Fix rank always showing #1
+#### 3d. Post-Assessment Summary with analysis and recommendations
+
+### Priority 4: Growth & Partnerships (after UX is solid)
+- App name decision + domain purchase
+- NPPT league outreach
+- NPPT integration build (regions, venues, leaderboards)
+
+---
+
+## BLOCKING / NEEDS DECISION (Chris + Chuck)
+
+| Item | Status |
+|------|--------|
+| Two-path UX vision (casual vs serious) | UX doc sent to Chuck — needs review |
+| Nav structure (5-tab redesign) | Proposed in mockup, needs approval |
+| Color direction (warm Wordle-light theme) | Mockup close, needs final sign-off |
+| Player mode switching mechanics | When/how can casual upgrade to serious? |
+| Guest default path | Probably casual — needs confirmation |
+| Assessment gating for casual players | Hidden vs blocked? |
+| Progress data → Supabase migration timing | Needed for serious player features |
+| Dynamic assessment validation | Automated check that generated hands have unambiguous correct answers |
+| App name | Brainstorm done, need to pick and buy domain |
+| GitHub repo visibility | Repo is public — discuss making private |
+| NPPT contact | Need to identify decision maker |
 
 ---
 
 ## SHORT TERM (Next 2-4 Weeks)
 
 ### App Development
-- [ ] Build NPPT region/venue database and registration flow
-- [ ] Add nickname field to league profile
-- [ ] League-filtered leaderboards (by region, by venue)
-- [ ] Survival Mode (arcade high-score game)
+- [ ] Implement warm color palette across all screens
+- [ ] Build 5-tab navigation with two-path home screens
+- [ ] Build welcome screen with player mode fork
+- [ ] Dynamic assessment generator
+- [ ] Spot review UI for drills, assessment, and daily hands
+- [ ] Progress tab Supabase migration + trends
+- [ ] Player profile and leak tracking for serious players
 - [ ] Mobile responsiveness testing and fixes
-- [ ] Integrate hand logger into Train mode with Supabase persistence
-- [ ] Wire Complexity Mode and Explanation toggles in settings
 
 ### League Partnership
 - [ ] Finalize app name and secure domain
 - [ ] Build NPPT pitch deck / one-pager
 - [ ] Identify NPPT decision maker and make contact
-- [ ] Prepare demo with NPPT branding applied
-
-### User Testing
-- [ ] Collect and analyze tester feedback (target: 20+ survey responses)
-- [ ] Identify top 3 improvement priorities from feedback
-- [ ] Fix critical issues surfaced by testers
-- [ ] Second round of testing with improvements applied
+- [ ] Build region/venue database schema
 
 ---
 
 ## MEDIUM TERM (1-2 Months)
 
 ### Training Content
-- [ ] Deploy Raise Sizing module (content prototyped)
-- [ ] Deploy 3-Betting Strategy module (content prototyped)
-- [ ] Deploy Facing Limpers module (content prototyped)
-- [ ] Build ICM and Bubble Play module (grinder tier)
-- [ ] Build Postflop Fundamentals module (grinder tier)
+- [ ] Deploy Raise Sizing module
+- [ ] Deploy 3-Betting Strategy module
+- [ ] Deploy Facing Limpers module
+- [ ] Build ICM and Bubble Play module
+- [ ] Build Postflop Fundamentals module
 
 ### Platform
-- [ ] Multi-league support (player can belong to multiple leagues)
-- [ ] League admin dashboard (separate from app admin)
+- [ ] Multi-league support
+- [ ] League admin dashboard
 - [ ] Push notifications for daily challenge reminders
-- [ ] Progressive module unlocking (competency gates)
-
+- [ ] Progressive module unlocking
 
 ---
 
 ## LONGER TERM (3-6 Months)
 
-### Advanced Training Content
-- [ ] Stack-Aware Tournament Strategy module
-- [ ] Range Construction module (think in ranges, not hands)
-- [ ] Exploitative Adjustments module (deviate based on opponent tendencies)
-- [ ] Multi-Table Tournament Pacing module
-- [ ] Postflop decision trees (continuation betting, board textures)
+### Advanced Training
+- [ ] Stack-Aware Tournament Strategy
+- [ ] Range Construction
+- [ ] Exploitative Adjustments
+- [ ] Multi-Table Tournament Pacing
+- [ ] Postflop decision trees
 
 ### Product & Growth
-- [ ] Finalize monetization model (freemium, subscription tiers)
-- [ ] Second league partnership (after NPPT proves the model)
-- [ ] App Store / Play Store consideration (PWA vs native)
+- [ ] Finalize monetization model
+- [ ] Second league partnership
+- [ ] App Store / Play Store consideration
 - [ ] Sound effects and haptic feedback
-- [ ] "What Should I Do?" quick lookup tool
 - [ ] Social features: challenge a friend, share hands
-- [ ] Content creator / influencer partnerships in bar poker space
-
-### League Platform
-- [ ] League operator analytics dashboard
-- [ ] Automated season tracking synced with league calendars
-- [ ] Tournament structure recommendations based on player skill data
-- [ ] New player discovery pipeline (app → nearest venue → first game)
-
----
-
-## PARKING LOT (Ideas to revisit)
-
-- Survival Mode (arcade-style endurance game)
-- Hand logger for live sessions (Train mode)
-- AI-powered hand analysis (paste a hand history, get coaching)
-- Video content integration (short clips explaining concepts)
-- Heads-up challenge mode (1v1 competitive)
-- Seasonal tournaments within the app
-- Integration with BPO/WSOP qualification tracking
-- Dealer training module (separate audience, same platform)
-- Fantasy poker league integration
 
 ---
 
@@ -189,6 +186,10 @@ The app needs a name before we approach leagues. Current working title: "Poker T
 | Apr 1 | Friendly coaching tone, not "leak detected" | "Not quite — here's the play" keeps players engaged |
 | Apr 2 | Consistent Fold/Raise/All-in choices | Beginners need predictable UI, not context-switching |
 | Apr 2 | League-first growth strategy | Leagues are distribution channels with built-in audiences |
+| **Apr 5** | **Two-path UX: casual vs serious home screens** | **Different users want fundamentally different experiences** |
+| **Apr 5** | **Warm Wordle-inspired visual design** | **Dark theme felt cold and uninviting — hurting retention** |
+| **Apr 5** | **5-tab navigation replacing 8-tab** | **Too many tabs confused users; Home/Play were duplicates** |
+| **Apr 5** | **Three-tier scoring: Best/Acceptable/Leak** | **Binary right/wrong discourages beginners; acceptable plays exist** |
 
 ---
 
@@ -197,28 +198,26 @@ The app needs a name before we approach leagues. Current working title: "Poker T
 ### User Engagement
 - Daily active users (DAU) and DAU/MAU ratio
 - Daily challenge completion rate
-- Average hands played per session (daily + bonus)
+- Average hands played per session
 - Streak length distribution
-- Onboarding completion rate vs skip rate
+- Return rate (% of users who come back day 2, day 7)
 
 ### Learning Effectiveness
 - Poker IQ progression over time
-- Accuracy improvement by category (position play, stack depth, facing opens)
-- Which coaching tips get the most "aha" moments (tracked by correct answers on retry)
+- Accuracy improvement by category
+- Leak category trends (7-day, 30-day)
 
 ### League Partnership
 - Players per league
-- Active rate within league (% of registered players who play daily)
-- League referral rate (players who join because of league affiliation)
-- Venue coverage (% of league venues with active players)
+- Active rate within league
+- Venue coverage
 
 ### Business
-- Tester NPS (Q4 survey question is effectively NPS)
-- Feature request themes (what do users want most?)
+- Tester NPS
+- Feature request themes
 - Conversion from guest to signed-in user
-- Email capture rate from feedback form
 
 ---
 
-*Last updated: April 2, 2026*
-*Next review: After first round of tester feedback (target: April 9, 2026)*
+*Last updated: April 5, 2026*
+*Next review: April 7, 2026 — after Chuck reviews UX vision doc*

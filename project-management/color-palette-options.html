@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Poker Trainer — Color Palette Options</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', sans-serif; background: #111; color: #fff; }
+
+  .header {
+    text-align: center;
+    padding: 40px 20px 20px;
+  }
+  .header h1 { font-size: 28px; margin-bottom: 8px; }
+  .header p { color: #aaa; font-size: 14px; }
+
+  .options-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+    max-width: 1200px;
+    margin: 30px auto;
+    padding: 0 20px;
+  }
+
+  .option {
+    border-radius: 16px;
+    overflow: hidden;
+    border: 2px solid #333;
+    transition: border-color 0.3s;
+  }
+  .option:hover { border-color: #888; }
+
+  .option-label {
+    padding: 16px 20px;
+    background: #1a1a1a;
+    border-bottom: 1px solid #333;
+  }
+  .option-label h2 { font-size: 18px; margin-bottom: 4px; }
+  .option-label p { font-size: 12px; color: #999; }
+
+  /* ===== MOCK SCREEN ===== */
+  .mock-screen {
+    padding: 24px;
+    min-height: 520px;
+  }
+
+  .mock-nav {
+    display: flex;
+    justify-content: space-around;
+    padding: 10px 0;
+    border-radius: 12px;
+    margin-top: 16px;
+    font-size: 11px;
+    text-align: center;
+  }
+  .mock-nav span { opacity: 0.5; }
+  .mock-nav span.active { opacity: 1; }
+
+  .mock-title { font-size: 22px; font-weight: 700; text-align: center; margin-bottom: 4px; }
+  .mock-subtitle { font-size: 12px; text-align: center; opacity: 0.6; margin-bottom: 20px; }
+
+  .stat-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .stat-card {
+    flex: 1;
+    padding: 14px 10px;
+    border-radius: 12px;
+    text-align: center;
+  }
+  .stat-card .emoji { font-size: 18px; margin-bottom: 4px; }
+  .stat-card .value { font-size: 24px; font-weight: 700; }
+  .stat-card .label { font-size: 11px; opacity: 0.6; margin-top: 2px; }
+
+  .trend-box {
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+    position: relative;
+    height: 100px;
+  }
+  .trend-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.5; }
+  .trend-value { position: absolute; top: 16px; right: 16px; font-size: 13px; font-weight: 600; }
+
+  .trend-line {
+    position: absolute;
+    bottom: 20px;
+    left: 16px;
+    right: 16px;
+    height: 30px;
+  }
+  .trend-line svg { width: 100%; height: 100%; }
+
+  .cta-card {
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+  }
+  .cta-card .cta-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.6; margin-bottom: 6px; }
+  .cta-card .cta-score { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+  .cta-card .cta-sub { font-size: 12px; opacity: 0.5; }
+
+  /* ===== OPTION A: Current (cold dark) ===== */
+  .option-current .mock-screen { background: #1a1b1e; }
+  .option-current .stat-card { background: #2a2b2e; border: 1px solid #333; }
+  .option-current .stat-card:nth-child(1) { background: #3a3520; border-color: #554a1a; }
+  .option-current .stat-card:nth-child(1) .value { color: #fff; }
+  .option-current .stat-card:nth-child(2) { background: #2e2540; border-color: #4a3570; }
+  .option-current .stat-card:nth-child(2) .value { color: #fff; }
+  .option-current .stat-card:nth-child(3) { background: #1e3530; border-color: #2a5545; }
+  .option-current .stat-card:nth-child(3) .value { color: #fff; }
+  .option-current .trend-box { background: #2a2b2e; border: 1px solid #333; }
+  .option-current .trend-value { color: #4ade80; }
+  .option-current .cta-card { background: #2e2540; border: 1px solid #4a3570; }
+  .option-current .mock-nav { background: #2a2b2e; }
+  .option-current .mock-nav .active { color: #4ade80; }
+
+  /* ===== OPTION B: Poker Lounge (warm greens + wood) ===== */
+  .option-lounge .mock-screen { background: #1a2418; }
+  .option-lounge .stat-card { background: #2a3625; border: 1px solid #3d4f35; }
+  .option-lounge .stat-card:nth-child(1) { background: #3d3018; border-color: #6b5220; }
+  .option-lounge .stat-card:nth-child(1) .value { color: #f5c842; }
+  .option-lounge .stat-card:nth-child(2) { background: #2a3625; border-color: #4a6540; }
+  .option-lounge .stat-card:nth-child(2) .value { color: #7cd4a0; }
+  .option-lounge .stat-card:nth-child(3) { background: #2a3625; border-color: #4a6540; }
+  .option-lounge .stat-card:nth-child(3) .value { color: #7cd4a0; }
+  .option-lounge .trend-box { background: #243020; border: 1px solid #3d4f35; }
+  .option-lounge .trend-value { color: #7cd4a0; }
+  .option-lounge .cta-card { background: #3d3018; border: 1px solid #6b5220; }
+  .option-lounge .cta-card .cta-score { color: #f5c842; }
+  .option-lounge .mock-nav { background: #243020; }
+  .option-lounge .mock-nav .active { color: #7cd4a0; }
+
+  /* ===== OPTION C: Whiskey & Felt (rich browns + emerald) ===== */
+  .option-whiskey .mock-screen { background: #1e1610; }
+  .option-whiskey .stat-card { background: #2e2218; border: 1px solid #4a3828; }
+  .option-whiskey .stat-card:nth-child(1) { background: #3e2a14; border-color: #6b4420; }
+  .option-whiskey .stat-card:nth-child(1) .value { color: #e8a848; }
+  .option-whiskey .stat-card:nth-child(2) { background: #1e3028; border-color: #2a5040; }
+  .option-whiskey .stat-card:nth-child(2) .value { color: #50c888; }
+  .option-whiskey .stat-card:nth-child(3) { background: #3e2a14; border-color: #6b4420; }
+  .option-whiskey .stat-card:nth-child(3) .value { color: #e8a848; }
+  .option-whiskey .trend-box { background: #2e2218; border: 1px solid #4a3828; }
+  .option-whiskey .trend-value { color: #50c888; }
+  .option-whiskey .cta-card { background: #1e3028; border: 1px solid #2a5040; }
+  .option-whiskey .cta-card .cta-score { color: #50c888; }
+  .option-whiskey .mock-nav { background: #2e2218; }
+  .option-whiskey .mock-nav .active { color: #e8a848; }
+
+  /* ===== OPTION D: Card Room Gold (dark navy + gold) ===== */
+  .option-gold .mock-screen { background: #141820; }
+  .option-gold .stat-card { background: #1e2430; border: 1px solid #2a3548; }
+  .option-gold .stat-card:nth-child(1) { background: #2a2818; border-color: #4a4420; }
+  .option-gold .stat-card:nth-child(1) .value { color: #f0d060; }
+  .option-gold .stat-card:nth-child(2) { background: #1e2430; border-color: #2a3548; }
+  .option-gold .stat-card:nth-child(2) .value { color: #60b0f0; }
+  .option-gold .stat-card:nth-child(3) { background: #2a2818; border-color: #4a4420; }
+  .option-gold .stat-card:nth-child(3) .value { color: #f0d060; }
+  .option-gold .trend-box { background: #1e2430; border: 1px solid #2a3548; }
+  .option-gold .trend-value { color: #f0d060; }
+  .option-gold .cta-card { background: #2a2818; border: 1px solid #4a4420; }
+  .option-gold .cta-card .cta-score { color: #f0d060; }
+  .option-gold .mock-nav { background: #1e2430; }
+  .option-gold .mock-nav .active { color: #f0d060; }
+
+  .swatches {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+  }
+  .swatch {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+
+  .notes {
+    max-width: 1200px;
+    margin: 40px auto;
+    padding: 0 20px 60px;
+  }
+  .notes h2 { font-size: 20px; margin-bottom: 12px; }
+  .notes p { color: #aaa; font-size: 14px; line-height: 1.6; margin-bottom: 12px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Poker Trainer — Color Direction Options</h1>
+  <p>Comparing the current cold dark theme against three warmer alternatives</p>
+</div>
+
+<div class="options-grid">
+
+  <!-- OPTION A: Current -->
+  <div class="option option-current">
+    <div class="option-label">
+      <h2>A. Current Theme</h2>
+      <p>Cold charcoal + purple accents — what you have now</p>
+      <div class="swatches">
+        <div class="swatch" style="background:#1a1b1e"></div>
+        <div class="swatch" style="background:#2a2b2e"></div>
+        <div class="swatch" style="background:#4a3570"></div>
+        <div class="swatch" style="background:#4ade80"></div>
+        <div class="swatch" style="background:#fff"></div>
+      </div>
+    </div>
+    <div class="mock-screen">
+      <div class="mock-title">Daily Hands</div>
+      <div class="mock-subtitle">5 hands. 60 seconds. How good are you?</div>
+      <div class="stat-row">
+        <div class="stat-card"><div class="emoji">🔥</div><div class="value">5</div><div class="label">Streak</div></div>
+        <div class="stat-card"><div class="emoji">🧠</div><div class="value">140</div><div class="label">IQ</div></div>
+        <div class="stat-card"><div class="emoji">👑</div><div class="value">#1</div><div class="label">of 1</div></div>
+      </div>
+      <div class="trend-box">
+        <div class="trend-label">IQ Trend (5D)</div>
+        <div class="trend-value">+32 IQ</div>
+        <div class="trend-line"><svg viewBox="0 0 200 30"><polyline points="10,25 50,20 100,18 150,12 190,5" fill="none" stroke="#4ade80" stroke-width="2.5" stroke-linecap="round"/><circle cx="190" cy="5" r="4" fill="#4ade80"/></svg></div>
+      </div>
+      <div class="cta-card">
+        <div class="cta-label">Completed Today</div>
+        <div class="cta-score">You scored 4/5</div>
+        <div class="cta-sub">Tap to see your results</div>
+      </div>
+      <div class="mock-nav">
+        <span class="active">🏠 Home</span>
+        <span class="active">🎰 Play</span>
+        <span>📘 Learn</span>
+        <span>🎯 Assess</span>
+        <span>⚡ Drills</span>
+        <span>📊 Progress</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- OPTION B: Poker Lounge -->
+  <div class="option option-lounge">
+    <div class="option-label">
+      <h2>B. Poker Lounge</h2>
+      <p>Dark green felt tones + warm gold — like sitting at a good table</p>
+      <div class="swatches">
+        <div class="swatch" style="background:#1a2418"></div>
+        <div class="swatch" style="background:#2a3625"></div>
+        <div class="swatch" style="background:#3d4f35"></div>
+        <div class="swatch" style="background:#f5c842"></div>
+        <div class="swatch" style="background:#7cd4a0"></div>
+      </div>
+    </div>
+    <div class="mock-screen">
+      <div class="mock-title">Daily Hands</div>
+      <div class="mock-subtitle">5 hands. 60 seconds. How good are you?</div>
+      <div class="stat-row">
+        <div class="stat-card"><div class="emoji">🔥</div><div class="value">5</div><div class="label">Streak</div></div>
+        <div class="stat-card"><div class="emoji">🧠</div><div class="value">140</div><div class="label">IQ</div></div>
+        <div class="stat-card"><div class="emoji">👑</div><div class="value">#1</div><div class="label">of 1</div></div>
+      </div>
+      <div class="trend-box">
+        <div class="trend-label">IQ Trend (5D)</div>
+        <div class="trend-value">+32 IQ</div>
+        <div class="trend-line"><svg viewBox="0 0 200 30"><polyline points="10,25 50,20 100,18 150,12 190,5" fill="none" stroke="#7cd4a0" stroke-width="2.5" stroke-linecap="round"/><circle cx="190" cy="5" r="4" fill="#7cd4a0"/></svg></div>
+      </div>
+      <div class="cta-card">
+        <div class="cta-label">Completed Today</div>
+        <div class="cta-score">You scored 4/5</div>
+        <div class="cta-sub">Tap to see your results</div>
+      </div>
+      <div class="mock-nav">
+        <span class="active">🃏 Play</span>
+        <span>📘 Learn</span>
+        <span>🎯 Assess</span>
+        <span>⚡ Drills</span>
+        <span>📊 Progress</span>
+        <span>⚙️ Settings</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- OPTION C: Whiskey & Felt -->
+  <div class="option option-whiskey">
+    <div class="option-label">
+      <h2>C. Whiskey &amp; Felt</h2>
+      <p>Rich brown leather + emerald green — classic card room</p>
+      <div class="swatches">
+        <div class="swatch" style="background:#1e1610"></div>
+        <div class="swatch" style="background:#2e2218"></div>
+        <div class="swatch" style="background:#6b4420"></div>
+        <div class="swatch" style="background:#e8a848"></div>
+        <div class="swatch" style="background:#50c888"></div>
+      </div>
+    </div>
+    <div class="mock-screen">
+      <div class="mock-title">Daily Hands</div>
+      <div class="mock-subtitle">5 hands. 60 seconds. How good are you?</div>
+      <div class="stat-row">
+        <div class="stat-card"><div class="emoji">🔥</div><div class="value">5</div><div class="label">Streak</div></div>
+        <div class="stat-card"><div class="emoji">🧠</div><div class="value">140</div><div class="label">IQ</div></div>
+        <div class="stat-card"><div class="emoji">👑</div><div class="value">#1</div><div class="label">of 1</div></div>
+      </div>
+      <div class="trend-box">
+        <div class="trend-label">IQ Trend (5D)</div>
+        <div class="trend-value">+32 IQ</div>
+        <div class="trend-line"><svg viewBox="0 0 200 30"><polyline points="10,25 50,20 100,18 150,12 190,5" fill="none" stroke="#50c888" stroke-width="2.5" stroke-linecap="round"/><circle cx="190" cy="5" r="4" fill="#50c888"/></svg></div>
+      </div>
+      <div class="cta-card">
+        <div class="cta-label">Completed Today</div>
+        <div class="cta-score">You scored 4/5</div>
+        <div class="cta-sub">Tap to see your results</div>
+      </div>
+      <div class="mock-nav">
+        <span class="active">🃏 Play</span>
+        <span>📘 Learn</span>
+        <span>🎯 Assess</span>
+        <span>⚡ Drills</span>
+        <span>📊 Progress</span>
+        <span>⚙️ Settings</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- OPTION D: Card Room Gold -->
+  <div class="option option-gold">
+    <div class="option-label">
+      <h2>D. Card Room Gold</h2>
+      <p>Dark navy + gold accents — premium, high-stakes feel</p>
+      <div class="swatches">
+        <div class="swatch" style="background:#141820"></div>
+        <div class="swatch" style="background:#1e2430"></div>
+        <div class="swatch" style="background:#2a3548"></div>
+        <div class="swatch" style="background:#f0d060"></div>
+        <div class="swatch" style="background:#60b0f0"></div>
+      </div>
+    </div>
+    <div class="mock-screen">
+      <div class="mock-title">Daily Hands</div>
+      <div class="mock-subtitle">5 hands. 60 seconds. How good are you?</div>
+      <div class="stat-row">
+        <div class="stat-card"><div class="emoji">🔥</div><div class="value">5</div><div class="label">Streak</div></div>
+        <div class="stat-card"><div class="emoji">🧠</div><div class="value">140</div><div class="label">IQ</div></div>
+        <div class="stat-card"><div class="emoji">👑</div><div class="value">#1</div><div class="label">of 1</div></div>
+      </div>
+      <div class="trend-box">
+        <div class="trend-label">IQ Trend (5D)</div>
+        <div class="trend-value">+32 IQ</div>
+        <div class="trend-line"><svg viewBox="0 0 200 30"><polyline points="10,25 50,20 100,18 150,12 190,5" fill="none" stroke="#f0d060" stroke-width="2.5" stroke-linecap="round"/><circle cx="190" cy="5" r="4" fill="#f0d060"/></svg></div>
+      </div>
+      <div class="cta-card">
+        <div class="cta-label">Completed Today</div>
+        <div class="cta-score">You scored 4/5</div>
+        <div class="cta-sub">Tap to see your results</div>
+      </div>
+      <div class="mock-nav">
+        <span class="active">🃏 Play</span>
+        <span>📘 Learn</span>
+        <span>🎯 Assess</span>
+        <span>⚡ Drills</span>
+        <span>📊 Progress</span>
+        <span>⚙️ Settings</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="notes">
+  <h2>Notes</h2>
+  <p><strong>Option A (Current):</strong> Cool charcoal grays with purple accent cards. Functional but feels like a dark-mode developer tool. No warmth.</p>
+  <p><strong>Option B (Poker Lounge):</strong> The background shifts to a dark forest green that echoes the poker felt from your table screens. Gold highlights for streaks and achievements. Feels like you're sitting at a table in a well-lit card room.</p>
+  <p><strong>Option C (Whiskey &amp; Felt):</strong> Rich brown tones like leather and wood paneling, with emerald green pops. The warmest option — feels like a classic card room with dark wood furniture. Pairs naturally with the brown rail on your poker table.</p>
+  <p><strong>Option D (Card Room Gold):</strong> Dark navy base with gold as the primary accent. More premium/luxury feel. Less "cozy" than B or C, but feels high-stakes and aspirational.</p>
+  <p><strong>Also note:</strong> Options B, C, and D consolidate Home and Play into a single "Play" nav item, freeing up a slot. This matches what users expect — one tap to get to the action.</p>
+</div>
+
+</body>
+</html>

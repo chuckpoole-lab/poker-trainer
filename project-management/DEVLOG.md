@@ -208,7 +208,7 @@ Decision: Build two experiences in one app.
 - **Dynamic scenario generator** producing hundreds of unique hands
 - **Two complete user experiences** (Play + Train)
 - **Auth, admin, league branding, feedback collection** — all production
-- **Live at:** poker-trainer-six.vercel.app
+- **Live at:** poker-trainer-ashy.vercel.app
 
 
 ---
@@ -221,3 +221,80 @@ Decision: Build two experiences in one app.
 - Fix: Deterministic suit assignment derived from hand code hash (no shared RNG)
 - Added safety validation: card ranks force-checked against hand code after generation
 - Tested: 650 hands (150 daily + 500 bonus) with zero mismatches
+
+---
+
+## v0.9.2 — Session Tracking & Range Fixes (April 3, 2026)
+
+**Guest session tracking + Admin stats dashboard**
+- Built `app_sessions` Supabase table — tracks every visit (guest + registered)
+- Built `session-tracker.ts` — device fingerprint, heartbeat every 60s, hands counter
+- New Stats tab on admin dashboard with 7-day trends
+- Committed and pushed → Vercel auto-deployed
+
+**Facing-open range gap fix (accuracy critical)**
+- Built automated validation script — tests 14,365 scenarios
+- Filled ALL 37 missing facing-open combos with GTO ranges
+- Re-validated: 0 CRITICAL, 0 GAP issues
+- Fixes Chuck's bug report: BB with 66 vs BTN raise being told to fold
+
+---
+
+## v0.10.0 — UX Vision & Session Timeout Fix (April 5, 2026)
+
+**Major UX review session — retention is the #1 problem**
+
+People are visiting but not coming back. This session produced a comprehensive product vision overhaul.
+
+**Session timeout fix (auth-context.tsx):**
+- Added `visibilitychange` listener to detect when user returns to a stale tab
+- Calls `supabase.auth.refreshSession()` silently on return
+- If refresh fails (token expired beyond recovery), signs user out cleanly
+- Eliminates the frozen/hanging screen that was causing users to abandon the app
+- Status: Code written and TypeScript-validated, pending commit + push
+
+**Two-path UX vision:**
+- Defined casual path ("I play for fun") vs serious path ("I'm here to train")
+- Casual: Play Home with daily challenge front and center, gamification, no homework
+- Serious: Training Hub with assessment, leak fixing, position drills, player profile
+- Daily Hands is the bridge — shared by both paths, the Wordle mechanic
+- Created comprehensive vision document: `Poker-Trainer-UX-Vision-v2.html`
+- Sent to Chuck for review via Gmail draft
+
+**Visual design direction:**
+- Rejected all dark theme variations — too cold, uninviting
+- Approved warm Wordle-inspired palette: cream (#faf8f5), felt green (#4a7c59), gold (#e8a848)
+- Created mockup: `wordle-poker-mockup.html` with home, play, train, and feedback screens
+- 5-tab navigation replacing confusing 8-tab layout
+
+**Navigation overhaul planned:**
+- Current: 8 tabs with Home/Play going to same place
+- New: 5 tabs (Home, Play, Train, Progress, More) with path-dependent content
+- Train tab hidden for casual players
+
+**Scoring philosophy change:**
+- Moving from binary right/wrong to three tiers: Best play / Acceptable / Leak
+- Prevents discouraging beginners who make reasonable but suboptimal plays
+
+**Content issues identified:**
+- Assessment: same 20 hands every time (hardcoded) — testers notice repeats
+- Spot review: doesn't show user's actual answers vs correct answers
+- Progress: all localStorage, no trends, no recommendations
+- Table visualization missing from Daily Hands
+
+**Project management:**
+- Fixed stale URL references across all docs (poker-trainer-six → poker-trainer-ashy)
+- Security audit: no exposed secrets, source maps disabled, RLS configured
+- Confirmed poker-trainer-six was old Vercel deployment name, not another project
+- Complete rewrite of WORK-PLAN.md with 4 priority tiers
+- Updated PROJECT-PLAN.md with two-path vision and revised roadmap
+
+**Files created/modified:**
+- `auth-context.tsx` — session timeout fix (pending commit)
+- `wordle-poker-mockup.html` — visual design mockup
+- `Poker-Trainer-UX-Vision-v2.html` — comprehensive UX vision doc for Chuck
+- `USER-EXPERIENCE-VISION.md` — markdown version of UX vision
+- `WORK-PLAN.md` — complete rewrite with new priorities
+- `PROJECT-PLAN.md` — updated with two-path vision
+- `DEVLOG.md` — this entry
+- `DASHBOARD.md` — updated URLs and status
