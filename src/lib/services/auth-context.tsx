@@ -125,9 +125,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
+    // Refresh session when user returns to a stale tab
+    // This prevents the frozen/hanging screen after inactivity
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState !== 'visible') return;
+
+      // Only refresh if user was previously signed in (not guests)
+      const currentState = await supabase.auth.getSession();
+      const hadSession = currentState.data.session !== null;
+
+      if (hadSession) {
+        try {
+          const { data, error } = await supabase.auth.refreshSession();
+          if (error || !data.session) {
+            // Session expired beyond recovery — sign the user out cleanly
+            // so they see the sign-in screen instead of a frozen app
+            console.warn('Session refresh failed — signing out for clean restart');
+            await supabase.auth.signOut();
+          }
+        } catch (err) {
+          // Network error or Supabase unreachable — sign out cleanly
+          console.warn('Session refresh error:', err);
+          await supabase.auth.signOut();
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     return () => {
       clearTimeout(timeout);
       subscription.unsubscribe();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [fetchProfile]);
 
