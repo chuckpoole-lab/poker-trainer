@@ -54,20 +54,41 @@ Current 8-tab nav is confusing (Home = Play duplicate, too many choices). New st
 
 ## PRIORITY 2: Content & Gameplay Fixes (Testers are noticing)
 
-### 2a. Assessment Hands — HARDCODED, needs randomization
+### 2a. Borderline Hand Scoring — "Acceptable Zone" for Bar Poker
+Chris flagged: Q-low in the SB at 15bb is scored as wrong when jamming, but it's a profitable play at bar poker tables where BBs over-fold. The app is strict GTO but bar poker players don't play GTO — they make donkey calls and wild jams. The app shouldn't punish reasonable exploitative plays.
+
+**Phase 1: Acceptable buffer (quick win)**
+- [ ] Add a "borderline" zone: hands within ~5% of the range cutoff score as "acceptable" (yellow) instead of "wrong" (red)
+- [ ] Update explanation text for borderline spots: "This is close. GTO says fold, but against a tight BB this jam is profitable."
+- [ ] Apply to both opening ranges and facing-open ranges
+
+**Phase 2: Bar Poker Exploit Mode (medium lift)**
+- [ ] Wire up the existing Complexity Mode setting (Core/Coach/Advanced) — one mode becomes "Bar Poker" or "Exploit"
+- [ ] Widen steal ranges (SB, BTN, CO) where recreational players over-fold the blinds
+- [ ] Tighten call/jam ranges in spots where recreational players over-call (e.g., multiway pots)
+- [ ] Show both GTO and exploit recommendations side by side in explanations
+
+**Phase 3: Table-aware training (future)**
+- [ ] Let users describe their table ("tight", "loose/passive", "maniac at the table")
+- [ ] Adjust recommended ranges based on table profile
+- [ ] "At your table, this hand is a jam because the BB folds 65% of the time"
+
+**Impact:** Directly causing frustration — testers see borderline spots marked wrong and lose trust in the app's advice.
+
+### 2b. Assessment Hands — HARDCODED, needs randomization
 - [ ] Assessment is the same 20 hands every time — tester confirmed he's seeing repeats
 - [ ] Build a dynamic assessment generator (like drills already have) that pulls from the range tables
 - [ ] Keep the 9 leak categories but randomize which hands test each category
 - [ ] Consider: generate a pool of 40+ spots, randomly pick 20 per session
 - **Impact:** Solid players have no reason to retake the assessment right now
 
-### 2b. Learn Quiz Questions — Also hardcoded
+### 2c. Learn Quiz Questions — Also hardcoded
 - [ ] Foundations quiz is same 14 questions every time
 - [ ] Position quizzes are also hardcoded
 - [ ] Lower priority than assessment, but should be randomized eventually
 - **Note:** Drills are already random (confirmed). Daily Hands are date-seeded (correct by design).
 
-### 2c. Spot Review — Show what the user got wrong
+### 2d. Spot Review — Show what the user got wrong
 - [ ] After drills: no persistent review screen exists (only in-the-moment feedback)
 - [ ] After assessment: review page shows correct answers but NOT the user's actual answers
 - [ ] After Daily Hands: only shows color-coded grid, no individual hand review
@@ -75,7 +96,7 @@ Current 8-tab nav is confusing (Home = Play duplicate, too many choices). New st
 - [ ] Infrastructure exists (user answers are stored) — just needs to be surfaced
 - **Impact:** Users can't learn from mistakes without seeing what they got wrong
 
-### 2d. Progress Tab — Needs real value
+### 2e. Progress Tab — Needs real value
 Current problems:
 - [ ] All data stored in localStorage only — lost on browser/device switch
 - [ ] Leak categories only populate from assessments (drills don't contribute)
