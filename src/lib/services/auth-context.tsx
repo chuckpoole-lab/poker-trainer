@@ -127,27 +127,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Refresh session when user returns to a stale tab
     // This prevents the frozen/hanging screen after inactivity
+    let lastVisible = Date.now();
+
     const handleVisibilityChange = async () => {
-      if (document.visibilityState !== 'visible') return;
+      if (document.visibilityState === 'hidden') {
+        lastVisible = Date.now();
+        return;
+      }
 
-      // Only refresh if user was previously signed in (not guests)
-      const currentState = await supabase.auth.getSession();
-      const hadSession = currentState.data.session !== null;
+      // Only attempt refresh if tab was hidden for > 2 minutes
+      const awayMs = Date.now() - lastVisible;
+      if (awayMs < 120_000) return;
 
-      if (hadSession) {
-        try {
-          const { data, error } = await supabase.auth.refreshSession();
+      // Helper: race any promise against a timeout
+      const withTimeout = <T,>(promise: Promise<T>, ms: number): Promise<T> =>
+        Promise.race([
+          promise,
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('timeout')), ms)
+          ),
+        ]);
+
+      try {
+        // Quick connectivity check — if Supabase is unreachable, reload immediately
+        // This covers both guests and signed-in users
+        const session = await withTimeout(supabase.auth.getSession(), 4000);
+        const hadSession = session.data.session !== null;
+
+        if (hadSession) {
+          // Signed-in user: try to refresh the token
+          const { data, error } = await withTimeout(
+            supabase.auth.refreshSession(), 5000
+          );
           if (error || !data.session) {
-            // Session expired beyond recovery — sign the user out cleanly
-            // so they see the sign-in screen instead of a frozen app
             console.warn('Session refresh failed — signing out for clean restart');
             await supabase.auth.signOut();
           }
-        } catch (err) {
-          // Network error or Supabase unreachable — sign out cleanly
-          console.warn('Session refresh error:', err);
-          await supabase.auth.signOut();
         }
+        // Guest users: getSession succeeded, Supabase connection is alive, nothing else needed
+      } catch (err) {
+        // Timeout or network error — the connection is stale
+        // Force a page reload to get a clean state
+        console.warn('Stale connection detected after returning to tab:', err);
+        window.location.reload();
       }
     };
 
