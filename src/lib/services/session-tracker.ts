@@ -161,7 +161,8 @@ export async function updateSessionMode(mode: 'play' | 'train'): Promise<void> {
 
 // ── Admin: get daily stats ──
 export async function getDailyStats(date?: string): Promise<DailyStatsResult> {
-  const targetDate = date || new Date().toISOString().split('T')[0];
+  // Use Eastern Time so "today" resets at midnight EST, not midnight UTC
+  const targetDate = date || new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
 
   const { data, error } = await supabase
     .rpc('get_daily_stats', { target_date: targetDate });
@@ -181,7 +182,8 @@ export async function getStatsRange(days: number = 7): Promise<DailyStatsResult[
   for (let i = 0; i < days; i++) {
     const d = new Date();
     d.setDate(d.getDate() - i);
-    const dateStr = d.toISOString().split('T')[0];
+    // Use Eastern Time to match getDailyStats
+    const dateStr = d.toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
     const stats = await getDailyStats(dateStr);
     results.push(stats);
   }

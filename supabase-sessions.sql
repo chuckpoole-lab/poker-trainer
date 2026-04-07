@@ -51,7 +51,8 @@ end;
 $$;
 
 -- Admin helper: get daily stats summary
-create or replace function get_daily_stats(target_date date default current_date)
+-- Uses America/New_York timezone so "today" resets at midnight Eastern
+create or replace function get_daily_stats(target_date date default (now() at time zone 'America/New_York')::date)
 returns json
 language plpgsql
 security definer
@@ -73,7 +74,7 @@ begin
     'returning_devices', count(distinct device_fingerprint) filter (
       where device_fingerprint in (
         select device_fingerprint from public.app_sessions
-        where started_at::date < target_date
+        where (started_at at time zone 'America/New_York')::date < target_date
       )
     ),
     'total_hands', coalesce(sum(hands_played), 0),
@@ -86,7 +87,7 @@ begin
     'train_sessions', count(*) filter (where mode = 'train')
   ) into result
   from public.app_sessions
-  where started_at::date = target_date;
+  where (started_at at time zone 'America/New_York')::date = target_date;
 
   return result;
 end;

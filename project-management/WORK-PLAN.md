@@ -115,7 +115,53 @@ Current: 5 rating questions + freeform + name/email (too much friction)
 
 ---
 
-## PRIORITY 4: Growth & Partnerships (after UX is solid)
+## PRIORITY 4: Preflop Pro Integration (Quick Reference Tool)
+
+### Rationale
+Chris built a standalone GTO quick-reference app (Preflop Pro) that lets players look up the correct preflop action for any hand in real time — pick position, stack depth, action sequence, and instantly see fold/open/jam/call for all 169 hands on a color-coded grid. It already has its own repo and codebase (`preflop-pro`), built on the same stack (Next.js + TypeScript + Tailwind).
+
+Integrating this into the Poker Trainer as a `/reference` module makes strategic sense:
+
+- **Fills a gap we already identified.** The roadmap calls for adding limpers, raisers, and 3-bettors. Preflop Pro already solves those spots — squeezes, multi-way pots, iso-raises, arbitrary action sequences. This leapfrogs Phase 3 scenario expansion.
+- **Drives daily engagement.** Gives players a reason to open the app outside of the daily challenge. The trainer teaches the ranges; the reference tool is the safety net while they're still learning.
+- **Potential premium feature.** Could gate it as a league member perk — free users get training, league members get the lookup tool.
+- **Same tech stack.** Both apps are Next.js + TypeScript + Tailwind with static export to Vercel. No compatibility issues.
+- **Complementary range models.** The Poker Trainer uses GTO-verified static lookup tables (23 benchmarks passing) for daily challenges and drills where correctness is non-negotiable. Preflop Pro uses an algorithmic solver that generates ranges on the fly for any action sequence — more flexible but heuristic. Keeping both gives us accuracy where it matters and flexibility everywhere else.
+
+### What Already Exists (in `preflop-pro` repo)
+- `gto-engine.ts` (~920 lines) — hand scoring, equity vs range, EV calculations, 7 spot-type solvers
+- `HandGrid.tsx` — 13x13 color-coded hand matrix (green=raise, red=jam, blue=call, yellow=iso, grey=fold)
+- `ActionInput.tsx` — position selector + dynamic action sequence builder (fold/limp/open/call/raise)
+- `EquityDetails.tsx` — EV breakdown panel (EV jam, EV raise, EV fold, equity vs range)
+- `ShareExport.tsx` — copy grid as image, share spot via native share API
+- Full support for 9 positions, 5-50bb continuous stack slider, all spot types
+
+### Integration Estimate: 1-2 Sessions
+
+| Task | Effort |
+|------|--------|
+| Copy gto-engine.ts + types into Poker Trainer's `src/lib/` | Small |
+| Copy 4 components into `src/components/reference/` | Small |
+| Create `/reference` route with page layout | Small |
+| Restyle to match Poker Trainer's theme (dark slate palette) | Medium |
+| Wire into 5-tab nav as "Reference" or "Lookup" tab | Small |
+| Test all spot types (opening, facing raise, limpers, squeeze) | Medium |
+| Validate Preflop Pro's output against Poker Trainer's GTO benchmarks | Medium |
+
+### Architecture Decision
+- Keep Poker Trainer's static `range-tables.ts` for daily challenges, drills, and assessments (GTO-verified, benchmark-tested)
+- Use Preflop Pro's dynamic solver for the reference tool (handles any action sequence, any stack depth 5-50bb)
+- No range data duplication — each engine serves its own purpose
+
+### Open Questions
+- [ ] Should reference tool require login or be open to all visitors?
+- [ ] Gate as premium/league feature or free for everyone?
+- [ ] Keep Preflop Pro as a standalone app too, or sunset it once integrated?
+- [ ] Add link from reference tool back to relevant training drill? ("Want to practice this spot?")
+
+---
+
+## PRIORITY 5: Growth & Partnerships (after UX is solid)
 
 ### App Name Decision
 - [ ] Research domain availability for top 3 name candidates
@@ -137,7 +183,7 @@ Current: 5 rating questions + freeform + name/email (too much friction)
 
 ---
 
-## BLOCKING / NEEDS DECISION
+## BLOCKING / NEEDS DECISION (moved from Priority 4 to 5)
 
 | Item | Owner | Status |
 |------|-------|--------|
@@ -148,6 +194,23 @@ Current: 5 rating questions + freeform + name/email (too much friction)
 | NPPT contact | Chris | Need to identify decision maker |
 | Monetization model | Chris + Chuck | Parking lot — revisit after league partnership |
 | Mobile testing | Dev session | Schedule 30 min to test on actual phones |
+
+---
+
+## COMPLETED (April 6)
+
+### GTO Solver Engine — Replaced Hand-Typed Ranges with Math (Accuracy Critical)
+- [x] Built `scripts/generate-ranges.py` — preflop equity engine using EV math
+- [x] Tuned model: fixed premium hands jamming at 25bb, trash hands opening from EP
+- [x] 23/23 GTO benchmarks passing (including A3s bug and 66 bug)
+- [x] Replaced all data in `range-tables.ts` with solver-generated output
+- [x] All 60 facing-open combos verified, 14,365 scenarios validated, 0 critical issues
+- [x] Committed (`937047e`) and pushed — live on Vercel
+
+### Reviewed Preflop Pro Standalone App for Integration
+- [x] Reviewed full codebase (~1,500 LOC) — gto-engine, components, UI
+- [x] Assessed integration effort and documented in WORK-PLAN.md as Priority 4
+- [x] Identified complementary range models (static verified tables + dynamic solver)
 
 ---
 
