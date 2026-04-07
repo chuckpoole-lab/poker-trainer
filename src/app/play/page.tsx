@@ -140,7 +140,7 @@ function DailyHandsGame({ hands, iq, streak, rank, isBonus, onComplete, onBonusR
           {isBonus ? `Bonus Hand ${handIdx + 1}` : `Hand ${handIdx + 1} of ${hands.length}`}
         </div>
 
-        <div style={{ fontSize: 15, color: 'var(--on-surface, #0f172a)', lineHeight: 1.7, marginBottom: 18 }}>
+        <div style={{ fontSize: 15, color: 'var(--on-surface, #1a1a1a)', lineHeight: 1.7, marginBottom: 18 }}>
           You&apos;re on the <strong style={{ color: '#10b981' }}>{hand.position}</strong> with <strong style={{ color: '#10b981' }}>{hand.stack}</strong>.
           <br />{hand.situation}
         </div>
@@ -156,7 +156,7 @@ function DailyHandsGame({ hands, iq, streak, rank, isBonus, onComplete, onBonusR
             const wasCorrect = i === hand.correct;
             let btnBg = 'var(--surface-container, #fff)';
             let btnBorder = 'var(--outline-variant, #e2e8f0)';
-            let btnColor = 'var(--on-surface, #0f172a)';
+            let btnColor = 'var(--on-surface, #1a1a1a)';
             let letterBg = '#f1f5f9';
             let letterColor = '#64748b';
 
@@ -279,7 +279,7 @@ function ResultsScreen({ score, total, results, iq, iqChange, streak, rank, onBa
           <div style={{ fontSize: 22, letterSpacing: 4, marginBottom: 8 }}>
             {results.map((r, i) => <span key={i} style={{ color: r ? '#10b981' : '#ef4444' }}>{'\u25A0'} </span>)}
           </div>
-          <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--on-surface, #0f172a)' }}>{score}/5 &mdash; IQ {iq}</div>
+          <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--on-surface, #1a1a1a)' }}>{score}/5 &mdash; IQ {iq}</div>
           <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>pokertrain.app/daily</div>
         </div>
 
@@ -289,7 +289,7 @@ function ResultsScreen({ score, total, results, iq, iqChange, streak, rank, onBa
             background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: 14,
             padding: '14px 16px', marginBottom: 14, textAlign: 'center',
           }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', marginBottom: 10 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#1a1a1a', marginBottom: 10 }}>
               How was that experience?
             </div>
             <div style={{ display: 'flex', justifyContent: 'center', gap: 12, marginBottom: 8 }}>
@@ -595,7 +595,7 @@ export default function PlayPage() {
       {/* Header */}
       <div style={{ textAlign: 'center', padding: '20px 0 16px' }}>
         <div style={{ fontSize: 36, marginBottom: 4 }}>{'\u2660'}</div>
-        <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--on-surface, #0f172a)', letterSpacing: -0.3 }}>Daily Hands</div>
+        <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--on-surface, #1a1a1a)', letterSpacing: -0.3 }}>Daily Hands</div>
         <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>5 hands. 60 seconds. How good are you?</div>
       </div>
 
@@ -685,7 +685,7 @@ export default function PlayPage() {
       }}>
         <div style={{ fontSize: 32 }}>{'\u267B'}</div>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--on-surface, #0f172a)' }}>Keep Playing</div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--on-surface, #1a1a1a)' }}>Keep Playing</div>
           <div style={{ fontSize: 13, color: '#64748b' }}>5 more random hands. Still counts toward your IQ.</div>
         </div>
         <div style={{ fontSize: 18, color: '#94a3b8' }}>{'\u203A'}</div>
@@ -699,7 +699,7 @@ export default function PlayPage() {
       }}>
         <div style={{ fontSize: 28 }}>🎓</div>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--on-surface, #0f172a)' }}>Learn the Basics</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--on-surface, #1a1a1a)' }}>Learn the Basics</div>
           <div style={{ fontSize: 13, color: '#64748b' }}>Positions, terminology, and key concepts</div>
         </div>
         <div style={{ fontSize: 18, color: '#94a3b8' }}>{'\u203A'}</div>
@@ -727,7 +727,7 @@ export default function PlayPage() {
                   background: idx < 3 ? '#fef3c7' : '#f1f5f9',
                   color: idx < 3 ? '#92400e' : '#94a3b8',
                 }}>{idx + 1}</span>
-                <span style={{ flex: 1, fontSize: 14, fontWeight: isYou ? 700 : 400, color: isYou ? '#10b981' : 'var(--on-surface, #0f172a)' }}>
+                <span style={{ flex: 1, fontSize: 14, fontWeight: isYou ? 700 : 400, color: isYou ? '#10b981' : 'var(--on-surface, #1a1a1a)' }}>
                   {isYou ? 'You' : (p.display_name || 'Player')}
                 </span>
                 <span style={{ fontSize: 13, fontWeight: 600, color: '#64748b' }}>{p.poker_iq}</span>
@@ -752,13 +752,13 @@ export default function PlayPage() {
         background: 'var(--surface-container, #fff)', border: '1px solid var(--outline-variant, #e2e8f0)',
         borderRadius: 16, padding: '16px 18px', marginBottom: 14,
       }}>
-        <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--on-surface, #0f172a)', marginBottom: 12 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--on-surface, #1a1a1a)', marginBottom: 12 }}>
           {'\u2728'} What&apos;s new &amp; coming soon
         </div>
 
         <div style={{ fontSize: 12, fontWeight: 700, color: '#10b981', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>New</div>
         {['Daily Hands challenge with Poker IQ scoring', 'Unlimited bonus rounds after daily challenge', 'Position-aware coaching tips on every hand', 'Learn the Basics onboarding for new players'].map(f => (
-          <div key={f} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', fontSize: 13, color: 'var(--on-surface, #0f172a)' }}>
+          <div key={f} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', fontSize: 13, color: 'var(--on-surface, #1a1a1a)' }}>
             <span style={{ color: '#10b981', fontSize: 14 }}>{'\u2713'}</span> {f}
           </div>
         ))}
@@ -771,7 +771,7 @@ export default function PlayPage() {
         ))}
 
         <div style={{ borderTop: '1px solid var(--outline-variant, #e2e8f0)', marginTop: 12, paddingTop: 12 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--on-surface, #0f172a)', marginBottom: 6 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--on-surface, #1a1a1a)', marginBottom: 6 }}>
             What feature would you love to see?
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
@@ -782,7 +782,7 @@ export default function PlayPage() {
               style={{
                 flex: 1, padding: '8px 12px', fontSize: 13, borderRadius: 10,
                 border: '1.5px solid var(--outline-variant, #e2e8f0)',
-                background: 'var(--surface-container, #fff)', color: 'var(--on-surface, #0f172a)',
+                background: 'var(--surface-container, #fff)', color: 'var(--on-surface, #1a1a1a)',
                 fontFamily: 'var(--font-body, inherit)', outline: 'none',
               }}
             />

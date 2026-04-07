@@ -60,7 +60,7 @@ export default function WelcomePage() {
         <LeagueBrand size={72} />
       </div>
 
-      <h1 style={{ fontSize: 28, fontWeight: 800, letterSpacing: -0.5, margin: '0 0 8px', color: 'var(--on-surface, #0f172a)' }}>
+      <h1 style={{ fontSize: 28, fontWeight: 800, letterSpacing: -0.5, margin: '0 0 8px', color: 'var(--on-surface, #1a1a1a)' }}>
         How do you poker?
       </h1>
       <p style={{ fontSize: 15, color: '#94a3b8', lineHeight: 1.5, margin: '0 0 32px' }}>
@@ -90,7 +90,7 @@ export default function WelcomePage() {
       {/* Train mode card */}
       <button onClick={() => handleModeSelect('train')} style={{
         width: '100%', padding: '24px 20px', borderRadius: 16, cursor: 'pointer',
-        background: 'var(--surface-container, #0f172a)', border: '1px solid var(--outline-variant, #334155)',
+        background: 'var(--surface-container, #ffffff)', border: '1px solid var(--outline-variant, #e8e2d9)',
         textAlign: 'left', marginBottom: 14,
       }}>
         <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1, color: '#64748b', textTransform: 'uppercase', marginBottom: 8 }}>

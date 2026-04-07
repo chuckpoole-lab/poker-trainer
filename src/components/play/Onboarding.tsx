@@ -54,7 +54,7 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
       <div style={{ padding: '16px', maxWidth: 480, margin: '0 auto', minHeight: '80vh', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <div style={{ fontSize: 48, marginBottom: 12 }}>{'\u2660'}</div>
-          <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--on-surface, #0f172a)', margin: '0 0 8px' }}>
+          <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--on-surface, #1a1a1a)', margin: '0 0 8px' }}>
             Welcome to Daily Hands
           </h1>
           <p style={{ fontSize: 15, color: '#64748b', lineHeight: 1.6, margin: 0 }}>
@@ -90,7 +90,7 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
         <style>{`@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }`}</style>
 
         <div style={{ textAlign: 'center', padding: '16px 0 20px' }}>
-          <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--on-surface, #0f172a)' }}>The Poker Table</div>
+          <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--on-surface, #1a1a1a)' }}>The Poker Table</div>
           <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>Positions determine your strategy. Learn the table, then test yourself.</div>
         </div>
 
@@ -143,10 +143,10 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                 <span style={{ background: pos.color, color: '#fff', padding: '2px 8px', borderRadius: 6, fontSize: 12, fontWeight: 800 }}>{pos.abbr}</span>
-                <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--on-surface, #0f172a)' }}>{pos.name}</span>
+                <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--on-surface, #1a1a1a)' }}>{pos.name}</span>
               </div>
               <div style={{ fontSize: 13, color: '#64748b', lineHeight: 1.5, marginBottom: 4 }}>{pos.desc}</div>
-              <div style={{ fontSize: 13, color: 'var(--on-surface, #0f172a)', fontWeight: 600, lineHeight: 1.5 }}>{pos.approach}</div>
+              <div style={{ fontSize: 13, color: 'var(--on-surface, #1a1a1a)', fontWeight: 600, lineHeight: 1.5 }}>{pos.approach}</div>
             </div>
           ))}
         </div>
@@ -208,7 +208,7 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
       <style>{`@keyframes fadeUp { from { transform: translateY(12px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }`}</style>
 
       <div style={{ textAlign: 'center', padding: '16px 0 12px' }}>
-        <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--on-surface, #0f172a)' }}>Quick Quiz</div>
+        <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--on-surface, #1a1a1a)' }}>Quick Quiz</div>
         <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>Test what you just learned</div>
       </div>
 
@@ -229,7 +229,7 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
         <div style={{ fontSize: 12, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>
           {quizIdx + 1} of {total}
         </div>
-        <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--on-surface, #0f172a)', lineHeight: 1.6, marginBottom: 20 }}>
+        <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--on-surface, #1a1a1a)', lineHeight: 1.6, marginBottom: 20 }}>
           {q.question}
         </div>
 
@@ -237,7 +237,7 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
           {q.options.map((opt, i) => {
             let bg = 'var(--surface-container, #fff)';
             let border = 'var(--outline-variant, #e2e8f0)';
-            let color = 'var(--on-surface, #0f172a)';
+            let color = 'var(--on-surface, #1a1a1a)';
             if (showFeedback) {
               if (i === q.correctIndex) { bg = '#ecfdf5'; border = '#a7f3d0'; color = '#065f46'; }
               else if (i === selected && !isCorrect) { bg = '#fef2f2'; border = '#fca5a5'; color = '#991b1b'; }

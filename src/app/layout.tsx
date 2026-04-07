@@ -25,16 +25,16 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
       return (
         <div style={{
           minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: '#0f172a', padding: 24, textAlign: 'center',
+          background: '#f0ebe3', padding: 24, textAlign: 'center',
         }}>
           <div>
             <div style={{ fontSize: 48, marginBottom: 12 }}>{'\u2660'}</div>
-            <div style={{ fontSize: 20, fontWeight: 800, color: '#fff', marginBottom: 8 }}>Something went wrong</div>
-            <div style={{ fontSize: 14, color: '#94a3b8', marginBottom: 24, lineHeight: 1.6 }}>
+            <div style={{ fontSize: 20, fontWeight: 800, color: '#1a1a1a', marginBottom: 8 }}>Something went wrong</div>
+            <div style={{ fontSize: 14, color: '#999', marginBottom: 24, lineHeight: 1.6 }}>
               We{'\u2019'}re working on a fix. Try refreshing the page.
             </div>
             <button onClick={() => window.location.reload()} style={{
-              padding: '12px 32px', fontSize: 15, fontWeight: 700, background: '#10b981', color: '#fff',
+              padding: '12px 32px', fontSize: 15, fontWeight: 700, background: '#4a7c59', color: '#fff',
               border: 'none', borderRadius: 12, cursor: 'pointer',
             }}>Refresh</button>
           </div>
@@ -46,23 +46,16 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
 }
 
 const NAV_ITEMS = [
-  { href: '/', label: '♠', title: 'Home' },
+  { href: '/', label: '🏠', title: 'Home' },
   { href: '/play', label: '🃏', title: 'Play' },
-  { href: '/learn', label: '📖', title: 'Learn' },
-  { href: '/assessment', label: '🎯', title: 'Assess' },
-  { href: '/drills', label: '⚡', title: 'Drills' },
+  { href: '/train', label: '💪', title: 'Train' },
   { href: '/progress', label: '📊', title: 'Progress' },
-  { href: '/settings', label: '⚙️', title: 'Settings' },
+  { href: '/more', label: '⚙️', title: 'More' },
 ];
 
 function BottomNav() {
   const router = useRouter();
   const pathname = usePathname();
-  const { profile } = useAuth();
-
-  const navItems = profile?.is_admin
-    ? [...NAV_ITEMS, { href: '/admin', label: '👑', title: 'Coach' }]
-    : NAV_ITEMS;
 
   return (
     <nav style={{
@@ -70,15 +63,20 @@ function BottomNav() {
       bottom: 0,
       left: 0,
       right: 0,
-      background: 'var(--bg-secondary)',
-      borderTop: '1px solid var(--border-subtle)',
+      background: '#faf8f5',
+      borderTop: '1px solid #e8e2d9',
       display: 'flex',
       justifyContent: 'space-around',
       padding: '8px 0 env(safe-area-inset-bottom, 8px)',
       zIndex: 100,
     }}>
-      {navItems.map((item) => {
-        const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
+      {NAV_ITEMS.map((item) => {
+        const isActive = pathname === item.href
+          || (item.href !== '/' && pathname.startsWith(item.href))
+          // Map old routes into the new Train tab
+          || (item.href === '/train' && (pathname.startsWith('/learn') || pathname.startsWith('/assessment') || pathname.startsWith('/drills')))
+          // Map old routes into the new More tab
+          || (item.href === '/more' && (pathname.startsWith('/settings') || pathname.startsWith('/admin')));
         return (
           <button
             key={item.href}
@@ -87,18 +85,17 @@ function BottomNav() {
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              gap: 2,
+              gap: 3,
               background: 'none',
-              padding: '4px 8px',
-              minWidth: 44,
-              opacity: isActive ? 1 : 0.5,
+              padding: '4px 12px',
+              minWidth: 52,
             }}
           >
             <span style={{ fontSize: 20 }}>{item.label}</span>
             <span style={{
               fontSize: 10,
-              fontWeight: 600,
-              color: isActive ? 'var(--color-accent)' : 'var(--text-muted)',
+              fontWeight: isActive ? 700 : 500,
+              color: isActive ? '#4a7c59' : '#999',
               letterSpacing: '0.04em',
             }}>
               {item.title}

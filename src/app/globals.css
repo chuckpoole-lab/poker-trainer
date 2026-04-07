@@ -5,34 +5,34 @@
    ═══════════════════════════════════════════════════════════════════ */
 
 :root {
-  /* ── Color: Surfaces ── */
-  --surface:               #121411;
-  --surface-low:           #1a1c19;
-  --surface-container:     #1e201d;
-  --surface-high:          #292b27;
-  --surface-bright:        #383a36;
+  /* ── Color: Surfaces (warm light theme) ── */
+  --surface:               #f0ebe3;
+  --surface-low:           #faf8f5;
+  --surface-container:     #ffffff;
+  --surface-high:          #e8e2d9;
+  --surface-bright:        #d9d2c7;
 
-  /* ── Color: Felt & Rail ── */
+  /* ── Color: Felt & Rail (poker table — kept rich & dark) ── */
   --felt-base:             #0e3621;
   --felt-light:            #14492e;
   --mahogany:              #673f33;
   --mahogany-dark:         #4a271c;
   --mahogany-deep:         #311309;
 
-  /* ── Color: Semantic ── */
-  --primary:               #a6d1b2;
-  --primary-dim:           #40674e;
-  --gold:                  #e9c349;
-  --gold-dim:              #cca72f;
-  --on-surface:            #e3e3de;
-  --on-surface-variant:    #c1c8c0;
-  --outline-variant:       #414943;
-  --muted:                 #7a8279;
+  /* ── Color: Semantic (warm palette) ── */
+  --primary:               #4a7c59;
+  --primary-dim:           #3d6b4a;
+  --gold:                  #e8a848;
+  --gold-dim:              #c77c00;
+  --on-surface:            #1a1a1a;
+  --on-surface-variant:    #2c2c2c;
+  --outline-variant:       #e8e2d9;
+  --muted:                 #999999;
 
   /* ── Color: Feedback ── */
-  --color-correct:         #22c55e;
-  --color-acceptable:      #eab308;
-  --color-leak:            #ef4444;
+  --color-correct:         #2e7d32;
+  --color-acceptable:      #e8a848;
+  --color-leak:            #d32f2f;
 
   /* ── Legacy aliases (consumed by existing pages until migrated) ── */
   --bg-primary:            var(--surface);
@@ -73,16 +73,16 @@
   --radius-sm: 6px;   --radius-md: 10px;
   --radius-lg: 14px;  --radius-xl: 20px;  --radius-full: 9999px;
 
-  /* ── Shadows (tinted, not pure black — per design system) ── */
-  --shadow-sm:  0 1px 3px rgba(18,20,17,0.4);
-  --shadow-md:  0 2px 8px rgba(18,20,17,0.5);
-  --shadow-lg:  0 4px 20px rgba(18,20,17,0.6);
-  --shadow-xl:  0 8px 32px rgba(18,20,17,0.7);
-  --shadow-glow-correct:    0 0 12px rgba(34,197,94,0.3);
-  --shadow-glow-acceptable: 0 0 12px rgba(234,179,8,0.3);
-  --shadow-glow-leak:       0 0 12px rgba(239,68,68,0.3);
-  --shadow-glow-primary:    0 0 16px rgba(166,209,178,0.25);
-  --shadow-glow-gold:       0 0 16px rgba(233,195,73,0.25);
+  /* ── Shadows (warm, subtle for light theme) ── */
+  --shadow-sm:  0 1px 3px rgba(0,0,0,0.08);
+  --shadow-md:  0 2px 8px rgba(0,0,0,0.10);
+  --shadow-lg:  0 4px 20px rgba(0,0,0,0.12);
+  --shadow-xl:  0 8px 30px rgba(0,0,0,0.12);
+  --shadow-glow-correct:    0 0 12px rgba(46,125,50,0.25);
+  --shadow-glow-acceptable: 0 0 12px rgba(232,168,72,0.3);
+  --shadow-glow-leak:       0 0 12px rgba(211,47,47,0.25);
+  --shadow-glow-primary:    0 0 16px rgba(74,124,89,0.2);
+  --shadow-glow-gold:       0 0 16px rgba(232,168,72,0.25);
 
   /* ── Transitions ── */
   --ease-out:        cubic-bezier(0.16, 1, 0.3, 1);
@@ -126,8 +126,8 @@ button {
 }
 
 .badge-correct {
-  background: rgba(34, 197, 94, 0.15);
-  color: var(--color-correct);
+  background: #e8f5e9;
+  color: #2e7d32;
   padding: var(--space-1) var(--space-3);
   border-radius: var(--radius-full);
   font-weight: var(--font-semibold);
@@ -135,8 +135,8 @@ button {
 }
 
 .badge-acceptable {
-  background: rgba(234, 179, 8, 0.15);
-  color: var(--color-acceptable);
+  background: #fff8e1;
+  color: #e65100;
   padding: var(--space-1) var(--space-3);
   border-radius: var(--radius-full);
   font-weight: var(--font-semibold);
@@ -144,8 +144,8 @@ button {
 }
 
 .badge-leak {
-  background: rgba(239, 68, 68, 0.15);
-  color: var(--color-leak);
+  background: #ffebee;
+  color: #c62828;
   padding: var(--space-1) var(--space-3);
   border-radius: var(--radius-full);
   font-weight: var(--font-semibold);
@@ -154,7 +154,7 @@ button {
 
 .btn-primary {
   background: var(--primary);
-  color: var(--surface);
+  color: #ffffff;
   padding: var(--space-4) var(--space-8);
   border-radius: var(--radius-md);
   font-size: var(--text-base);
@@ -168,18 +168,18 @@ button {
 }
 
 .btn-secondary {
-  background: var(--surface-high);
+  background: var(--surface-container);
   color: var(--on-surface);
   padding: var(--space-3) var(--space-6);
   border-radius: var(--radius-md);
   font-size: var(--text-base);
   font-weight: var(--font-semibold);
-  border: 1px solid var(--outline-variant);
+  border: 1.5px solid var(--outline-variant);
   transition: background var(--duration-fast) var(--ease-out);
 }
 
 .btn-secondary:hover {
-  background: var(--surface-container);
+  background: var(--surface-high);
 }
 
 /* Action buttons for poker decisions */
@@ -194,67 +194,74 @@ button {
 }
 
 .action-btn-fold {
-  background: var(--surface-high);
-  color: var(--on-surface-variant);
+  background: #f0ebe3;
+  color: #666;
+  border: 1.5px solid #e8e2d9;
 }
 .action-btn-fold:hover {
-  background: var(--surface-bright);
-  color: var(--on-surface);
+  background: #e8e2d9;
+  color: #2c2c2c;
 }
 
 .action-btn-open {
-  background: rgba(166,209,178,0.2);
-  color: var(--primary);
+  background: #e8f5e9;
+  color: #2e7d32;
+  border: 1.5px solid #c8e6c9;
 }
 .action-btn-open:hover {
-  background: rgba(166,209,178,0.3);
+  background: #c8e6c9;
 }
 
 .action-btn-jam {
-  background: rgba(239,68,68,0.2);
-  color: #fca5a5;
+  background: #ffebee;
+  color: #c62828;
+  border: 1.5px solid #ffcdd2;
 }
 .action-btn-jam:hover {
-  background: rgba(239,68,68,0.3);
-  color: #fecaca;
+  background: #ffcdd2;
+  color: #b71c1c;
 }
 
 .action-btn-call {
-  background: rgba(34,197,94,0.2);
-  color: #86efac;
+  background: #e8f5e9;
+  color: #2e7d32;
+  border: 1.5px solid #c8e6c9;
 }
 .action-btn-call:hover {
-  background: rgba(34,197,94,0.3);
-  color: #bbf7d0;
+  background: #c8e6c9;
+  color: #1b5e20;
 }
 
 .action-btn-raise-fold {
-  background: rgba(233,195,73,0.2);
-  color: var(--gold);
+  background: #fff8e1;
+  color: #e65100;
+  border: 1.5px solid #ffe0b2;
 }
 .action-btn-raise-fold:hover {
-  background: rgba(233,195,73,0.3);
+  background: #ffe0b2;
 }
 
 .action-btn-raise-call {
-  background: rgba(166,209,178,0.15);
-  color: var(--primary);
+  background: #e8f5e9;
+  color: #4a7c59;
+  border: 1.5px solid #c8e6c9;
 }
 .action-btn-raise-call:hover {
-  background: rgba(166,209,178,0.25);
+  background: #c8e6c9;
 }
 
 .action-btn-limp {
-  background: var(--surface-high);
-  color: var(--on-surface);
+  background: #f0ebe3;
+  color: #2c2c2c;
+  border: 1.5px solid #e8e2d9;
 }
 .action-btn-limp:hover {
-  background: var(--surface-bright);
+  background: #e8e2d9;
 }
 
 /* Score bar */
 .score-bar-track {
-  background: var(--surface-high);
+  background: #e8e2d9;
   border-radius: var(--radius-sm);
   height: 8px;
   width: 100%;
@@ -272,7 +279,7 @@ button {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: var(--surface-high);
+  background: #e8e2d9;
   transition: background var(--duration-fast);
 }
 
