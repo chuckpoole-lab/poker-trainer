@@ -6,7 +6,15 @@
 
 import { generateDrillSpot, type GeneratedSpot } from './spot-generator';
 import { Position, SimplifiedAction, SpotType, POSITION_LABELS } from '@/lib/types';
-import { ALL_HANDS, type HandCombo } from '@/lib/data/range-tables';
+import { ALL_HANDS, getOpeningAction, getFacingOpenAction, type HandCombo } from '@/lib/data/range-tables';
+import {
+  explainOpen,
+  explainFoldUnopened,
+  explainJamUnopened,
+  explainJamVsOpen,
+  explainCallVsOpen,
+  explainFoldVsOpen,
+} from '@/lib/data/explanation-templates';
 
 // ── Types ──
 
@@ -21,7 +29,6 @@ export interface PlayHandScenario {
   tipRight: string;
   tipWrong: string;
 }
-
 // ── Seeded random number generator (Mulberry32) ──
 
 function seededRng(seed: number) {
@@ -46,15 +53,14 @@ function dateToSeed(dateStr: string): number {
 // ── Card parsing ──
 
 const SUIT_CHOICES = ['h', 'd', 'c', 's'];
-
-function parseHandCode(handCode: string, rng: () => number): Array<{ rank: string; suit: string }> {
+function parseHandCode(handCode: string): Array<{ rank: string; suit: string }> {
   const rank1 = handCode[0];
   const rank2 = handCode.length >= 2 ? handCode[1] : rank1;
   const isSuited = handCode.endsWith('s');
   const isPair = rank1 === rank2 && !handCode.endsWith('s') && !handCode.endsWith('o');
 
-  // Use a deterministic suit assignment based on the hand code itself
-  // This ensures cards ALWAYS match the hand code regardless of RNG state
+  // Deterministic suit assignment based on the hand code itself
+  // This ensures cards ALWAYS match the hand code regardless of any external state
   const suitSeed = handCode.charCodeAt(0) * 31 + handCode.charCodeAt(1) * 7 + (handCode.length > 2 ? handCode.charCodeAt(2) : 0);
 
   if (isPair) {
@@ -75,7 +81,6 @@ function parseHandCode(handCode: string, rng: () => number): Array<{ rank: strin
       { rank: rank2, suit },
     ];
   }
-
   // Offsuit
   const s1Idx = suitSeed % 4;
   let s2Idx = (suitSeed * 3 + 1) % 3;
@@ -99,28 +104,23 @@ function buildSituation(spot: GeneratedSpot): string {
   const pos = POSITION_DISPLAY[template.position] || POSITION_LABELS[template.position as Position];
 
   if (template.spotType === SpotType.FACING_OPEN || template.spotType === SpotType.FACING_3BET) {
-    // Parse opener from action history
     const history = template.actionHistory;
     const openerMatch = history.match(/^(\w+)_opens/);
     const openerKey = openerMatch ? openerMatch[1] : 'unknown';
     const openerName = POSITION_DISPLAY[openerKey] || openerKey.toUpperCase();
     const heroPos = template.position;
-
-    // Determine if anyone could have folded between opener and hero
     const seatOrder = ['utg', 'utg1', 'mp', 'lj', 'hj', 'co', 'btn', 'sb', 'bb'];
     const openerIdx = seatOrder.indexOf(openerKey);
     const heroIdx = seatOrder.indexOf(heroPos);
     const gap = heroIdx - openerIdx;
 
     if (gap === 1) {
-      // Adjacent seats — nobody in between to fold
       return `The ${openerName} raises to 2.5x.`;
     } else if (gap === 2) {
       return `The ${openerName} raises to 2.5x. The player between you folds.`;
     } else if (gap > 2) {
       return `The ${openerName} raises to 2.5x. Everyone between you folds.`;
     } else {
-      // Hero is before opener in seat order (e.g., BB facing BTN open)
       return `The ${openerName} raises to 2.5x. Everyone else folds.`;
     }
   }
@@ -129,7 +129,6 @@ function buildSituation(spot: GeneratedSpot): string {
     return 'Everyone folds to you. Only the big blind remains.';
   }
 
-  // Position-aware situation text for unopened pots
   const situationMap: Record<string, string> = {
     utg: "You're first to act. Full table, 8-9 players behind you.",
     utg1: "UTG folds. You're next to act with 7-8 players behind you.",
@@ -141,15 +140,12 @@ function buildSituation(spot: GeneratedSpot): string {
   };
   return situationMap[template.position] || 'Everyone folds to you.';
 }
-
 // ── Choice and tip builders ──
 
 function buildChoices(correctAction: SimplifiedAction, spotType: SpotType, stackBb: number): string[] {
-  // Consistent choices for Play mode — same options every time per spot type
   if (spotType === SpotType.FACING_OPEN || spotType === SpotType.FACING_3BET) {
     return ['Fold', 'Call', 'All-in'];
   }
-  // Unopened pots (including SB)
   return ['Fold', 'Raise', 'All-in'];
 }
 
@@ -171,40 +167,76 @@ function getCorrectIndex(correctAction: SimplifiedAction, choices: string[]): nu
 const ACTION_DISPLAY: Record<string, string> = {
   fold: 'Fold', open: 'Raise', call: 'Call', jam: 'All-in',
 };
-
-function buildPlayTip(spot: GeneratedSpot, isCorrect: boolean): string {
-  const { spot: s } = spot;
-  const action = s.simplifiedAction;
-  const actionLabel = ACTION_DISPLAY[action] || action;
-
-  // Use the explanation templates but adapt for play mode tone
-  const explanation = s.explanation;
-  if (isCorrect) {
-    return explanation.plain;
-  }
-
-  // Wrong answer: clearly state the correct action, then explain why
-  return `The correct play is ${actionLabel}. ${explanation.plain}`;
-}
-
 // ── Convert a generated spot into a PlayHandScenario ──
+// CRITICAL: This function is the single source of truth for what the user sees.
+// Cards, correct action, and explanation are ALL derived from the same handCode
+// to make it IMPOSSIBLE for them to reference different hands.
 
 function spotToPlayScenario(generated: GeneratedSpot, rng: () => number): PlayHandScenario {
   const { spot, template } = generated;
   const pos = POSITION_DISPLAY[template.position] || POSITION_LABELS[template.position as Position];
+  const handCode = spot.handCode;
 
-  const cards = parseHandCode(spot.handCode, rng);
-  
-  // Safety: verify cards match hand code
-  const expectedRanks = [spot.handCode[0], spot.handCode.length >= 2 ? spot.handCode[1] : spot.handCode[0]];
-  if (cards[0].rank !== expectedRanks[0] || cards[1].rank !== expectedRanks[1]) {
-    // Force correct ranks if somehow mismatched
-    cards[0].rank = expectedRanks[0];
-    cards[1].rank = expectedRanks[1];
+  // Step 1: Generate cards directly from handCode (deterministic, no RNG dependency)
+  const cards = parseHandCode(handCode);
+
+  // Step 2: Re-derive the correct action from range-tables using handCode
+  // Range-tables are the authoritative source of truth
+  let verifiedAction: SimplifiedAction;
+  const isFacingOpen = template.spotType === SpotType.FACING_OPEN || template.spotType === SpotType.FACING_3BET;
+  const posMap: Record<string, Position> = {
+    utg: Position.UTG, utg1: Position.UTG1, mp: Position.MP,
+    lj: Position.LJ, hj: Position.HJ, co: Position.CO,
+    btn: Position.BTN, sb: Position.SB, bb: Position.BB,
+  };
+
+  let openerPos: Position | undefined;
+  if (isFacingOpen) {
+    const actionHistory = template.actionHistory || '';
+    const openerMatch = actionHistory.match(/^(\w+)_opens/);
+    openerPos = openerMatch ? posMap[openerMatch[1]] : undefined;
+    if (openerPos) {
+      verifiedAction = getFacingOpenAction(openerPos, template.position as Position, template.stackDepthBb, handCode);
+    } else {
+      verifiedAction = spot.simplifiedAction;
+    }
+  } else {
+    verifiedAction = getOpeningAction(template.position as Position, template.stackDepthBb, handCode);
+  }
+
+  // Log if the verified action differs from what the spot generator produced
+  if (verifiedAction !== spot.simplifiedAction) {
+    console.warn(`[PokerTrainer] Action mismatch: spot=${spot.simplifiedAction} vs range-tables=${verifiedAction} for ${handCode} at ${template.position} ${template.stackDepthBb}bb. Using range-tables.`);
+  }
+  // Step 3: Generate FRESH explanation directly from handCode + verifiedAction
+  // This is the key fix — we NEVER use the pre-cached spot.explanation
+  // because it could reference a different hand due to caching/CDN inconsistency
+  let freshExplanation: { plain: string };
+
+  if (isFacingOpen && openerPos) {
+    freshExplanation = verifiedAction === SimplifiedAction.JAM
+      ? explainJamVsOpen(handCode, template.position as Position, openerPos, template.stackDepthBb)
+      : verifiedAction === SimplifiedAction.CALL
+        ? explainCallVsOpen(handCode, template.position as Position, openerPos, template.stackDepthBb)
+        : explainFoldVsOpen(handCode, template.position as Position, openerPos, template.stackDepthBb);
+  } else if (!isFacingOpen) {
+    freshExplanation = verifiedAction === SimplifiedAction.OPEN
+      ? explainOpen(handCode, template.position as Position, template.stackDepthBb)
+      : verifiedAction === SimplifiedAction.JAM
+        ? explainJamUnopened(handCode, template.position as Position, template.stackDepthBb)
+        : explainFoldUnopened(handCode, template.position as Position, template.stackDepthBb);
+  } else {
+    // Fallback: use spot's pre-cached explanation (facing open but no opener parsed)
+    freshExplanation = spot.explanation;
   }
   const situation = buildSituation(generated);
-  const choices = buildChoices(spot.simplifiedAction, template.spotType as SpotType, template.stackDepthBb);
-  const correct = getCorrectIndex(spot.simplifiedAction, choices);
+  const choices = buildChoices(verifiedAction, template.spotType as SpotType, template.stackDepthBb);
+  const correct = getCorrectIndex(verifiedAction, choices);
+
+  // Build tips from freshExplanation (guaranteed to reference handCode)
+  const actionLabel = ACTION_DISPLAY[verifiedAction] || verifiedAction;
+  const tipRight = freshExplanation.plain;
+  const tipWrong = `The correct play is ${actionLabel}. ${freshExplanation.plain}`;
 
   return {
     id: spot.id,
@@ -214,11 +246,10 @@ function spotToPlayScenario(generated: GeneratedSpot, rng: () => number): PlayHa
     cards,
     choices,
     correct,
-    tipRight: buildPlayTip(generated, true),
-    tipWrong: buildPlayTip(generated, false),
+    tipRight,
+    tipWrong,
   };
 }
-
 // ── Public API ──
 
 /**
@@ -237,18 +268,19 @@ export function generateDailyHands(dateStr?: string): PlayHandScenario[] {
   while (hands.length < 5 && attempts < 50) {
     attempts++;
 
-    // Use seeded random to pick scenario parameters deterministically
     const scenarioSeed = seed + hands.length * 7919 + attempts * 31;
     const scenarioRng = seededRng(scenarioSeed);
 
     // Override Math.random temporarily for the generator
+    // Use try/finally to guarantee restoration even if generateDrillSpot throws
     const originalRandom = Math.random;
-    Math.random = scenarioRng;
-
-    const generated = generateDrillSpot();
-
-    Math.random = originalRandom;
-
+    let generated: GeneratedSpot;
+    try {
+      Math.random = scenarioRng;
+      generated = generateDrillSpot();
+    } finally {
+      Math.random = originalRandom;
+    }
     // Avoid duplicates
     const key = `${generated.spot.handCode}_${generated.template.position}`;
     if (usedKeys.has(key)) continue;
@@ -277,7 +309,6 @@ export function generateBonusHands(count: number): PlayHandScenario[] {
   const hands: PlayHandScenario[] = [];
   const usedKeys = new Set<string>();
   let attempts = 0;
-
   while (hands.length < count && attempts < count * 5) {
     attempts++;
     const rng = () => Math.random();
