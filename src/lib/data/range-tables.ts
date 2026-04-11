@@ -267,16 +267,134 @@ const FACING_OPEN_RAW: Record<string, FacingOpenEntry> = {
   'mp_co_30': { jamRange: 'QQ+, AKs', callRange: '44-JJ, A9s+, ATo+, KTs+, KJo+, QTs+, JTs, T9s, 98s' },
 };
 
+// ======= FACING LIMP RANGES =======
+// When a player limps ahead of hero: isolate-raise / limp-behind / jam / fold
+// Key format: "limperPosition_heroPosition_stackBb"
+// Teaching point: limpers are weak — raise to isolate, don't limp behind
+
+interface FacingLimpEntry {
+  raiseRange: string;   // Isolation raise (3-4x + 1x per limper)
+  jamRange: string;     // All-in over limper
+  limpRange: string;    // Limp behind (speculative hands)
+  // Everything else = fold
+}
+
+const FACING_LIMP_RAW: Record<string, FacingLimpEntry> = {
+  // UTG limps → hero on BTN
+  'utg_btn_15': { raiseRange: '', jamRange: '44+, A2s+, K6s+, Q8s+, J9s+, T9s+, A4o+, K9o+, QTo+, JTo+', limpRange: '22-33, 87s, 76s, 65s' },
+  'utg_btn_20': { raiseRange: '55+, A2s+, K7s+, Q8s+, J8s+, T8s+, 98s+, A5o+, K9o+, QTo+, JTo+', jamRange: 'TT+, AJs+, KQs+, AQo+', limpRange: '22-44, 87s, 76s, 65s' },
+  'utg_btn_25': { raiseRange: '44+, A2s+, K5s+, Q7s+, J8s+, T8s+, 98s+, 87s+, A3o+, K9o+, QTo+, JTo+', jamRange: '', limpRange: '22-33, 76s, 65s, 54s' },
+  'utg_btn_30': { raiseRange: '33+, A2s+, K4s+, Q6s+, J7s+, T7s+, 97s+, 87s+, A2o+, K8o+, Q9o+, J9o+, T9o+', jamRange: '', limpRange: '22, 65s, 54s' },
+
+  // UTG limps → hero in SB
+  'utg_sb_15': { raiseRange: '', jamRange: '55+, A2s+, K7s+, Q9s+, JTs+, A6o+, KTo+, QTo+', limpRange: '22-44, K2s-K6s, Q8s, J9s, 98s, 87s' },
+  'utg_sb_20': { raiseRange: '66+, A4s+, KTs+, QTs+, JTs+, A9o+, KJo+, QJo+', jamRange: 'TT+, AQs+, AKo+', limpRange: '22-55, A2s-A3s, K5s-K9s, Q9s, J9s, T9s, 98s' },
+  'utg_sb_25': { raiseRange: '55+, A3s+, K9s+, QTs+, JTs+, A8o+, KJo+', jamRange: '', limpRange: '22-44, A2s, K5s-K8s, Q9s, J9s, T9s, 98s, 87s' },
+  'utg_sb_30': { raiseRange: '44+, A2s+, K7s+, Q9s+, J9s+, T9s+, A5o+, KTo+, QTo+', jamRange: '', limpRange: '22-33, K5s-K6s, 87s, 76s' },
+
+  // HJ limps → hero on BTN
+  'hj_btn_15': { raiseRange: '', jamRange: '33+, A2s+, K5s+, Q8s+, J9s+, T9s+, A3o+, K9o+, QTo+, JTo+', limpRange: '22, 87s, 76s, 65s, 54s' },
+  'hj_btn_20': { raiseRange: '44+, A2s+, K5s+, Q7s+, J8s+, T8s+, 98s+, 87s+, A3o+, K9o+, QTo+, JTo+', jamRange: '99+, ATs+, KQs+, AJo+', limpRange: '22-33, 76s, 65s, 54s' },
+  'hj_btn_25': { raiseRange: '33+, A2s+, K4s+, Q6s+, J7s+, T7s+, 97s+, 87s+, 76s+, A2o+, K7o+, Q9o+, J9o+, T9o+', jamRange: '', limpRange: '22, 65s, 54s' },
+  'hj_btn_30': { raiseRange: '22+, A2s+, K3s+, Q5s+, J6s+, T7s+, 96s+, 86s+, 76s+, 65s+, A2o+, K6o+, Q8o+, J9o+, T9o+', jamRange: '', limpRange: '' },
+
+  // HJ limps → hero in SB
+  'hj_sb_15': { raiseRange: '', jamRange: '55+, A2s+, K7s+, Q9s+, J9s+, T9s+, A5o+, KTo+, QTo+, JTo+', limpRange: '22-44, K2s-K6s, Q8s, J9s, 98s, 87s' },
+  'hj_sb_20': { raiseRange: '55+, A3s+, K9s+, QTs+, JTs+, A8o+, KJo+', jamRange: 'TT+, AQs+, AKo+', limpRange: '22-44, A2s, K5s-K8s, Q9s, J9s, T9s, 98s, 87s' },
+  'hj_sb_25': { raiseRange: '44+, A2s+, K7s+, Q9s+, JTs+, T9s+, A5o+, KTo+, QTo+', jamRange: '', limpRange: '22-33, K5s-K6s, J9s, 98s, 87s, 76s' },
+  'hj_sb_30': { raiseRange: '33+, A2s+, K5s+, Q8s+, J9s+, T9s+, 98s+, A3o+, K9o+, QTo+, JTo+', jamRange: '', limpRange: '22, 87s, 76s, 65s' },
+
+  // CO limps → hero on BTN
+  'co_btn_15': { raiseRange: '', jamRange: '33+, A2s+, K4s+, Q7s+, J8s+, T8s+, 98s+, 87s+, A2o+, K8o+, Q9o+, JTo+', limpRange: '22, 76s, 65s, 54s' },
+  'co_btn_20': { raiseRange: '33+, A2s+, K3s+, Q5s+, J7s+, T7s+, 97s+, 87s+, 76s+, A2o+, K7o+, Q9o+, J9o+, T9o+', jamRange: '88+, A9s+, KJs+, AJo+', limpRange: '22, 65s, 54s' },
+  'co_btn_25': { raiseRange: '22+, A2s+, K2s+, Q4s+, J6s+, T7s+, 96s+, 86s+, 76s+, 65s+, A2o+, K5o+, Q8o+, J9o+, T9o+', jamRange: '', limpRange: '' },
+  'co_btn_30': { raiseRange: '22+, A2s+, K2s+, Q3s+, J5s+, T6s+, 96s+, 85s+, 75s+, 65s+, 54s+, A2o+, K4o+, Q7o+, J8o+, T9o+', jamRange: '', limpRange: '' },
+
+  // SB completes → hero in BB (raise wide — SB limps are weak)
+  'sb_bb_15': { raiseRange: '', jamRange: '22+, A2s+, K3s+, Q5s+, J7s+, T8s+, 97s+, 87s+, A2o+, K6o+, Q8o+, J9o+, T9o+', limpRange: '76s, 65s, 54s, 43s, K2s, Q4s-Q3s, J6s, T7s, 96s, 86s' },
+  'sb_bb_20': { raiseRange: '22+, A2s+, K2s+, Q4s+, J6s+, T7s+, 97s+, 86s+, 76s+, 65s+, A2o+, K5o+, Q7o+, J8o+, T9o+', jamRange: '77+, A5s+, KTs+, QJs+, A9o+, KQo+', limpRange: '54s, 43s, Q3s-Q2s, J5s, T6s, 96s, 85s, 75s' },
+  'sb_bb_25': { raiseRange: '22+, A2s+, K2s+, Q3s+, J5s+, T6s+, 96s+, 85s+, 75s+, 65s+, 54s+, A2o+, K3o+, Q6o+, J8o+, T8o+, 98o+', jamRange: '', limpRange: '43s, 32s, Q2s, J4s, T5s, 95s, 84s, 74s, 64s' },
+  'sb_bb_30': { raiseRange: '22+, A2s+, K2s+, Q2s+, J4s+, T5s+, 95s+, 85s+, 74s+, 64s+, 54s+, 43s+, A2o+, K2o+, Q5o+, J7o+, T8o+, 98o+, 87o+', jamRange: '', limpRange: '32s, J3s, T4s, 94s, 84s, 73s, 63s, 53s' },
+};
+
+// ======= FACING 3-BET RANGES =======
+// Hero opened, then faces a 3-bet (usually a jam at these stack depths)
+// Key format: "heroPosition_threeBettorPosition_stackBb"
+// Teaching point: fold most of your opening range vs a 3-bet — that's correct and disciplined
+
+interface Facing3BetEntry {
+  callRange: string;    // Call the 3-bet/jam
+  jamRange: string;     // 4-bet jam (at deeper stacks where 3-bet wasn't all-in)
+  // Everything else = fold
+}
+
+const FACING_3BET_RAW: Record<string, Facing3BetEntry> = {
+  // Hero opened UTG → faces 3-bet
+  'utg_btn_15': { callRange: '99+, AQs+, AKo', jamRange: '' },
+  'utg_btn_20': { callRange: 'TT+, AQs+, AKo', jamRange: '' },
+  'utg_btn_25': { callRange: 'TT+, AQs+, AKo', jamRange: '' },
+  'utg_btn_30': { callRange: '99+, AJs+, KQs, AQo+', jamRange: 'QQ+, AKs' },
+
+  'utg_bb_15': { callRange: 'TT+, AQs+, AKo', jamRange: '' },
+  'utg_bb_20': { callRange: 'TT+, AQs+, AKo', jamRange: '' },
+  'utg_bb_25': { callRange: 'TT+, AQs+, AKo', jamRange: '' },
+  'utg_bb_30': { callRange: '99+, AJs+, KQs, AQo+', jamRange: 'QQ+, AKs' },
+
+  // Hero opened HJ → faces 3-bet
+  'hj_btn_15': { callRange: '88+, ATs+, KQs+, AJo+', jamRange: '' },
+  'hj_btn_20': { callRange: 'TT+, AJs+, KQs+, AQo+', jamRange: '' },
+  'hj_btn_25': { callRange: 'TT+, AQs+, AKo', jamRange: '' },
+  'hj_btn_30': { callRange: '99+, AJs+, KQs, AQo+', jamRange: 'QQ+, AKs' },
+
+  'hj_bb_15': { callRange: '88+, ATs+, KQs, AJo+', jamRange: '' },
+  'hj_bb_20': { callRange: 'TT+, AJs+, KQs+, AQo+', jamRange: '' },
+  'hj_bb_25': { callRange: 'TT+, AQs+, AKo', jamRange: '' },
+  'hj_bb_30': { callRange: '99+, AJs+, KQs, AQo+', jamRange: 'QQ+, AKs' },
+
+  // Hero opened CO → faces 3-bet
+  'co_btn_15': { callRange: '77+, A9s+, KJs+, ATo+, KQo+', jamRange: '' },
+  'co_btn_20': { callRange: '99+, ATs+, KQs+, AQo+', jamRange: '' },
+  'co_btn_25': { callRange: '99+, AJs+, KQs+, AQo+', jamRange: 'QQ+, AKs' },
+  'co_btn_30': { callRange: '88+, ATs+, KJs+, AJo+, KQo+', jamRange: 'QQ+, AKs' },
+
+  'co_bb_15': { callRange: '77+, A9s+, KJs+, ATo+, KQo+', jamRange: '' },
+  'co_bb_20': { callRange: '99+, ATs+, KQs+, AQo+', jamRange: '' },
+  'co_bb_25': { callRange: '99+, AJs+, KQs+, AQo+', jamRange: '' },
+  'co_bb_30': { callRange: '88+, ATs+, KJs+, AJo+, KQo+', jamRange: 'QQ+, AKs' },
+
+  // Hero opened BTN → faces 3-bet from SB
+  'btn_sb_15': { callRange: '66+, A8s+, KTs+, QJs+, ATo+, KQo+', jamRange: '' },
+  'btn_sb_20': { callRange: '88+, A9s+, KJs+, QJs+, ATo+, KQo+', jamRange: '' },
+  'btn_sb_25': { callRange: '88+, ATs+, KJs+, AJo+, KQo+', jamRange: 'QQ+, AKs' },
+  'btn_sb_30': { callRange: '77+, A9s+, KTs+, QJs+, ATo+, KJo+', jamRange: 'QQ+, AKs' },
+
+  // Hero opened BTN → faces 3-bet from BB
+  'btn_bb_15': { callRange: '66+, A8s+, KTs+, QJs+, ATo+, KQo+', jamRange: '' },
+  'btn_bb_20': { callRange: '77+, A9s+, KJs+, QJs+, ATo+, KQo+', jamRange: '' },
+  'btn_bb_25': { callRange: '88+, ATs+, KJs+, AJo+, KQo+', jamRange: 'QQ+, AKs' },
+  'btn_bb_30': { callRange: '77+, A8s+, KTs+, QJs+, A9o+, KJo+, QJo+', jamRange: 'QQ+, AKs' },
+
+  // Hero opened SB → faces 3-bet from BB
+  'sb_bb_15': { callRange: '77+, A9s+, KTs+, QJs+, ATo+, KQo+', jamRange: '' },
+  'sb_bb_20': { callRange: '88+, ATs+, KJs+, QJs+, AJo+, KQo+', jamRange: '' },
+  'sb_bb_25': { callRange: '88+, ATs+, KJs+, AJo+, KQo+', jamRange: 'QQ+, AKs' },
+  'sb_bb_30': { callRange: '77+, A9s+, KTs+, QJs+, ATo+, KJo+', jamRange: 'QQ+, AKs' },
+};
+
 // ======= PARSED/COMPILED RANGE DATA =======
 
 export interface CompiledRanges {
   opening: Map<string, { open: Set<string>; jam: Set<string> }>;
   facingOpen: Map<string, { jam: Set<string>; call: Set<string> }>;
+  facingLimp: Map<string, { raise: Set<string>; jam: Set<string>; limp: Set<string> }>;
+  facing3Bet: Map<string, { call: Set<string>; jam: Set<string> }>;
 }
 
 function compileRanges(): CompiledRanges {
   const opening = new Map<string, { open: Set<string>; jam: Set<string> }>();
   const facingOpen = new Map<string, { jam: Set<string>; call: Set<string> }>();
+  const facingLimp = new Map<string, { raise: Set<string>; jam: Set<string>; limp: Set<string> }>();
+  const facing3Bet = new Map<string, { call: Set<string>; jam: Set<string> }>();
 
   for (const [stackStr, positions] of Object.entries(OPENING_RANGES_RAW)) {
     for (const [pos, ranges] of Object.entries(positions)) {
@@ -295,7 +413,22 @@ function compileRanges(): CompiledRanges {
     });
   }
 
-  return { opening, facingOpen };
+  for (const [key, entry] of Object.entries(FACING_LIMP_RAW)) {
+    facingLimp.set(key, {
+      raise: parseRange(entry.raiseRange),
+      jam: parseRange(entry.jamRange),
+      limp: parseRange(entry.limpRange),
+    });
+  }
+
+  for (const [key, entry] of Object.entries(FACING_3BET_RAW)) {
+    facing3Bet.set(key, {
+      call: parseRange(entry.callRange),
+      jam: parseRange(entry.jamRange),
+    });
+  }
+
+  return { opening, facingOpen, facingLimp, facing3Bet };
 }
 
 export const COMPILED_RANGES = compileRanges();
@@ -330,6 +463,47 @@ export function getFacingOpenAction(
 
   const key = `${openerPos}_${heroPos}_${closest}`;
   const ranges = COMPILED_RANGES.facingOpen.get(key);
+  if (!ranges) return SimplifiedAction.FOLD;
+
+  if (ranges.jam.has(handCode)) return SimplifiedAction.JAM;
+  if (ranges.call.has(handCode)) return SimplifiedAction.CALL;
+  return SimplifiedAction.FOLD;
+}
+
+export function getFacingLimpAction(
+  limperPos: Position,
+  heroPos: Position,
+  stackBb: number,
+  handCode: string,
+): SimplifiedAction {
+  const stacks = [15, 20, 25, 30];
+  const closest = stacks.reduce((prev, curr) =>
+    Math.abs(curr - stackBb) < Math.abs(prev - stackBb) ? curr : prev
+  );
+
+  const key = `${limperPos}_${heroPos}_${closest}`;
+  const ranges = COMPILED_RANGES.facingLimp.get(key);
+  if (!ranges) return SimplifiedAction.FOLD;
+
+  if (ranges.jam.has(handCode)) return SimplifiedAction.JAM;
+  if (ranges.raise.has(handCode)) return SimplifiedAction.OPEN;
+  if (ranges.limp.has(handCode)) return SimplifiedAction.LIMP;
+  return SimplifiedAction.FOLD;
+}
+
+export function getFacing3BetAction(
+  heroPos: Position,
+  threeBettorPos: Position,
+  stackBb: number,
+  handCode: string,
+): SimplifiedAction {
+  const stacks = [15, 20, 25, 30];
+  const closest = stacks.reduce((prev, curr) =>
+    Math.abs(curr - stackBb) < Math.abs(prev - stackBb) ? curr : prev
+  );
+
+  const key = `${heroPos}_${threeBettorPos}_${closest}`;
+  const ranges = COMPILED_RANGES.facing3Bet.get(key);
   if (!ranges) return SimplifiedAction.FOLD;
 
   if (ranges.jam.has(handCode)) return SimplifiedAction.JAM;

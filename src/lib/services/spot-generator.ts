@@ -14,6 +14,8 @@ import {
   handStrength,
   getOpeningAction,
   getFacingOpenAction,
+  getFacingLimpAction,
+  getFacing3BetAction,
   COMPILED_RANGES,
   type HandCombo,
 } from '@/lib/data/range-tables';
@@ -24,6 +26,13 @@ import {
   explainJamVsOpen,
   explainCallVsOpen,
   explainFoldVsOpen,
+  explainIsolateLimper,
+  explainLimpBehind,
+  explainJamVsLimp,
+  explainFoldVsLimp,
+  explainCallVs3Bet,
+  explainFoldVs3Bet,
+  explain4BetJam,
 } from '@/lib/data/explanation-templates';
 
 // Random helpers
@@ -50,7 +59,21 @@ interface FacingOpenScenario {
   stackBb: number;
 }
 
-type Scenario = UnopenedScenario | FacingOpenScenario;
+interface FacingLimpScenario {
+  type: 'facing_limp';
+  heroPosition: Position;
+  limperPosition: Position;
+  stackBb: number;
+}
+
+interface Facing3BetScenario {
+  type: 'facing_3bet';
+  heroPosition: Position;
+  threeBettorPosition: Position;
+  stackBb: number;
+}
+
+type Scenario = UnopenedScenario | FacingOpenScenario | FacingLimpScenario | Facing3BetScenario;
 
 // Positions that can open (for unopened spots)
 const OPENING_POSITIONS: Position[] = [
@@ -62,6 +85,8 @@ const STACK_DEPTHS = [10, 15, 20, 25, 30];
 
 // Facing-open scenarios we have range data for
 const FACING_OPEN_KEYS = Array.from(COMPILED_RANGES.facingOpen.keys());
+const FACING_LIMP_KEYS = Array.from(COMPILED_RANGES.facingLimp.keys());
+const FACING_3BET_KEYS = Array.from(COMPILED_RANGES.facing3Bet.keys());
 
 function parseFacingOpenKey(key: string): { opener: Position; hero: Position; stack: number } | null {
   const parts = key.split('_');
@@ -99,6 +124,8 @@ function classifyDifficulty(hand: HandCombo, action: SimplifiedAction, scenario:
 
 function assignLeakCategory(scenario: Scenario, action: SimplifiedAction): LeakCategoryId {
   if (scenario.type === 'facing_open') return LeakCategoryId.FACING_OPENS;
+  if (scenario.type === 'facing_limp') return LeakCategoryId.FACING_OPENS; // Reuse category for limps
+  if (scenario.type === 'facing_3bet') return LeakCategoryId.FACING_3BETS;
 
   const s = scenario as UnopenedScenario;
 
@@ -279,12 +306,188 @@ function pickInterestingHandFacingOpen(opener: Position, hero: Position, stack: 
   return pickRandom(ALL_HANDS);
 }
 
+function pickInterestingHandFacingLimp(limper: Position, hero: Position, stack: number): HandCombo {
+  if (Math.random() < 0.6) {
+    const borderline = ALL_HANDS.filter(h => {
+      const action = getFacingLimpAction(limper, hero, stack, h.code);
+      const strength = handStrength(h);
+      return (action !== SimplifiedAction.FOLD && strength < 260) ||
+             (action === SimplifiedAction.FOLD && strength > 130 && strength < 210);
+    });
+    if (borderline.length > 0) return pickRandom(borderline);
+  }
+  return pickRandom(ALL_HANDS);
+}
+
+function pickInterestingHandFacing3Bet(heroPos: Position, threeBettorPos: Position, stack: number): HandCombo {
+  if (Math.random() < 0.6) {
+    const borderline = ALL_HANDS.filter(h => {
+      const action = getFacing3BetAction(heroPos, threeBettorPos, stack, h.code);
+      const strength = handStrength(h);
+      // For 3-bet spots, borderline means hands near the call/fold boundary
+      return (action !== SimplifiedAction.FOLD && strength < 300) ||
+             (action === SimplifiedAction.FOLD && strength > 180 && strength < 280);
+    });
+    if (borderline.length > 0) return pickRandom(borderline);
+  }
+  return pickRandom(ALL_HANDS);
+}
+
+// ======= FACING LIMP GENERATOR =======
+
+function generateFacingLimpSpot(): GeneratedSpot {
+  const key = pickRandom(FACING_LIMP_KEYS);
+  const parsed = parseFacingLimpKey(key);
+
+  if (!parsed) return generateUnopenedSpot(); // Fallback
+
+  const { limper, hero, stack } = parsed;
+  const hand = pickInterestingHandFacingLimp(limper, hero, stack);
+  const correctAction = getFacingLimpAction(limper, hero, stack, hand.code);
+
+  const acceptableActions: SimplifiedAction[] = [];
+  // At short stacks, raise and jam are somewhat interchangeable
+  if (correctAction === SimplifiedAction.JAM && stack >= 20) {
+    acceptableActions.push(SimplifiedAction.OPEN);
+  }
+  if (correctAction === SimplifiedAction.OPEN && stack <= 15) {
+    acceptableActions.push(SimplifiedAction.JAM);
+  }
+
+  const explanation = correctAction === SimplifiedAction.OPEN
+    ? explainIsolateLimper(hand.code, hero, limper, stack)
+    : correctAction === SimplifiedAction.LIMP
+      ? explainLimpBehind(hand.code, hero, limper, stack)
+      : correctAction === SimplifiedAction.JAM
+        ? explainJamVsLimp(hand.code, hero, limper, stack)
+        : explainFoldVsLimp(hand.code, hero, limper, stack);
+
+  const scenario: FacingLimpScenario = { type: 'facing_limp', heroPosition: hero, limperPosition: limper, stackBb: stack };
+  const id = randomId();
+
+  const actionHistory = `${limper}_limps_folds_to_hero`;
+
+  const template: SpotTemplate = {
+    id: `tpl_${id}`,
+    stackDepthBb: stack,
+    position: hero,
+    spotType: SpotType.FACING_LIMP,
+    actionHistory,
+  };
+
+  const spot: SpotDecision = {
+    id,
+    spotTemplateId: template.id,
+    handCode: hand.code,
+    baselineAction: correctAction,
+    simplifiedAction: correctAction,
+    acceptableActions,
+    difficultyBand: classifyDifficulty(hand, correctAction, scenario),
+    leakCategory: assignLeakCategory(scenario, correctAction),
+    explanation,
+  };
+
+  return { spot, template };
+}
+
+// ======= FACING 3-BET GENERATOR =======
+
+function generateFacing3BetSpot(): GeneratedSpot {
+  const key = pickRandom(FACING_3BET_KEYS);
+  const parsed = parseFacing3BetKey(key);
+
+  if (!parsed) return generateUnopenedSpot(); // Fallback
+
+  const { hero, threeBettor, stack } = parsed;
+  const hand = pickInterestingHandFacing3Bet(hero, threeBettor, stack);
+  const correctAction = getFacing3BetAction(hero, threeBettor, stack, hand.code);
+
+  const acceptableActions: SimplifiedAction[] = [];
+  // At short stacks, calling and jamming are close
+  if (correctAction === SimplifiedAction.CALL && stack <= 20) {
+    acceptableActions.push(SimplifiedAction.JAM);
+  }
+  if (correctAction === SimplifiedAction.JAM && stack >= 25) {
+    acceptableActions.push(SimplifiedAction.CALL);
+  }
+
+  const explanation = correctAction === SimplifiedAction.JAM
+    ? explain4BetJam(hand.code, hero, threeBettor, stack)
+    : correctAction === SimplifiedAction.CALL
+      ? explainCallVs3Bet(hand.code, hero, threeBettor, stack)
+      : explainFoldVs3Bet(hand.code, hero, threeBettor, stack);
+
+  const scenario: Facing3BetScenario = { type: 'facing_3bet', heroPosition: hero, threeBettorPosition: threeBettor, stackBb: stack };
+  const id = randomId();
+
+  const actionHistory = `hero_opens_${hero}_${threeBettor}_3bets`;
+
+  const template: SpotTemplate = {
+    id: `tpl_${id}`,
+    stackDepthBb: stack,
+    position: hero,
+    spotType: SpotType.FACING_3BET,
+    actionHistory,
+  };
+
+  const spot: SpotDecision = {
+    id,
+    spotTemplateId: template.id,
+    handCode: hand.code,
+    baselineAction: correctAction,
+    simplifiedAction: correctAction,
+    acceptableActions,
+    difficultyBand: classifyDifficulty(hand, correctAction, scenario),
+    leakCategory: assignLeakCategory(scenario, correctAction),
+    explanation,
+  };
+
+  return { spot, template };
+}
+
+// ======= KEY PARSERS =======
+
+function parseFacingLimpKey(key: string): { limper: Position; hero: Position; stack: number } | null {
+  const parts = key.split('_');
+  if (parts.length !== 3) return null;
+  const posMap: Record<string, Position> = {
+    utg: Position.UTG, utg1: Position.UTG1, mp: Position.MP,
+    lj: Position.LJ, hj: Position.HJ, co: Position.CO,
+    btn: Position.BTN, sb: Position.SB, bb: Position.BB,
+  };
+  const limper = posMap[parts[0]];
+  const hero = posMap[parts[1]];
+  const stack = parseInt(parts[2]);
+  if (!limper || !hero || isNaN(stack)) return null;
+  return { limper, hero, stack };
+}
+
+function parseFacing3BetKey(key: string): { hero: Position; threeBettor: Position; stack: number } | null {
+  const parts = key.split('_');
+  if (parts.length !== 3) return null;
+  const posMap: Record<string, Position> = {
+    utg: Position.UTG, utg1: Position.UTG1, mp: Position.MP,
+    lj: Position.LJ, hj: Position.HJ, co: Position.CO,
+    btn: Position.BTN, sb: Position.SB, bb: Position.BB,
+  };
+  const hero = posMap[parts[0]];
+  const threeBettor = posMap[parts[1]];
+  const stack = parseInt(parts[2]);
+  if (!hero || !threeBettor || isNaN(stack)) return null;
+  return { hero, threeBettor, stack };
+}
+
 // ======= PUBLIC API =======
 
 export function generateDrillSpot(preferredCategory?: LeakCategoryId): GeneratedSpot {
-  // If asking for facing opens, always generate that type
+  // If asking for facing opens, generate facing-open or facing-limp
   if (preferredCategory === LeakCategoryId.FACING_OPENS) {
-    return generateFacingOpenSpot();
+    return Math.random() < 0.7 ? generateFacingOpenSpot() : generateFacingLimpSpot();
+  }
+
+  // If asking for facing 3-bets, always generate that type
+  if (preferredCategory === LeakCategoryId.FACING_3BETS) {
+    return generateFacing3BetSpot();
   }
 
   // For other categories, generate the appropriate unopened spot
@@ -292,9 +495,16 @@ export function generateDrillSpot(preferredCategory?: LeakCategoryId): Generated
     return generateUnopenedSpot(preferredCategory);
   }
 
-  // Mixed: 40% facing open, 60% unopened
-  if (Math.random() < 0.4) {
+  // Mixed distribution: 35% facing open, 15% facing limp, 10% facing 3-bet, 40% unopened
+  const roll = Math.random();
+  if (roll < 0.35) {
     return generateFacingOpenSpot();
+  }
+  if (roll < 0.50) {
+    return generateFacingLimpSpot();
+  }
+  if (roll < 0.60) {
+    return generateFacing3BetSpot();
   }
   return generateUnopenedSpot();
 }

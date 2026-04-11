@@ -6,7 +6,7 @@
 
 import { generateDrillSpot, type GeneratedSpot } from './spot-generator';
 import { Position, SimplifiedAction, SpotType, POSITION_LABELS } from '@/lib/types';
-import { ALL_HANDS, getOpeningAction, getFacingOpenAction, type HandCombo } from '@/lib/data/range-tables';
+import { ALL_HANDS, getOpeningAction, getFacingOpenAction, getFacingLimpAction, getFacing3BetAction, type HandCombo } from '@/lib/data/range-tables';
 import {
   explainOpen,
   explainFoldUnopened,
@@ -14,6 +14,13 @@ import {
   explainJamVsOpen,
   explainCallVsOpen,
   explainFoldVsOpen,
+  explainIsolateLimper,
+  explainLimpBehind,
+  explainJamVsLimp,
+  explainFoldVsLimp,
+  explainCallVs3Bet,
+  explainFoldVs3Bet,
+  explain4BetJam,
 } from '@/lib/data/explanation-templates';
 
 // ── Types ──
@@ -104,7 +111,42 @@ function buildSituation(spot: GeneratedSpot): string {
   const { template } = spot;
   const pos = POSITION_DISPLAY[template.position] || POSITION_LABELS[template.position as Position];
 
-  if (template.spotType === SpotType.FACING_OPEN || template.spotType === SpotType.FACING_3BET) {
+  // Facing a limp scenario
+  if (template.spotType === SpotType.FACING_LIMP) {
+    const history = template.actionHistory;
+    const limperMatch = history.match(/^(\w+)_limps/);
+    const limperKey = limperMatch ? limperMatch[1] : 'unknown';
+    const limperName = POSITION_DISPLAY[limperKey] || limperKey.toUpperCase();
+    const heroPos = template.position;
+    const seatOrder = ['utg', 'utg1', 'mp', 'lj', 'hj', 'co', 'btn', 'sb', 'bb'];
+    const limperIdx = seatOrder.indexOf(limperKey);
+    const heroIdx = seatOrder.indexOf(heroPos);
+    const gap = heroIdx - limperIdx;
+
+    if (limperKey === 'sb' && heroPos === 'bb') {
+      return `The Small Blind completes. You check or raise from the Big Blind.`;
+    } else if (gap === 1) {
+      return `The ${limperName} limps in.`;
+    } else if (gap === 2) {
+      return `The ${limperName} limps in. The player between you folds.`;
+    } else if (gap > 2) {
+      return `The ${limperName} limps in. Everyone between you folds.`;
+    } else {
+      return `The ${limperName} limps in. Everyone else folds.`;
+    }
+  }
+
+  // Facing a 3-bet scenario
+  if (template.spotType === SpotType.FACING_3BET) {
+    const history = template.actionHistory;
+    // Format: hero_opens_heroPos_3bettorPos_3bets
+    const match3Bet = history.match(/hero_opens_(\w+)_(\w+)_3bets/);
+    const threeBettorKey = match3Bet ? match3Bet[2] : 'unknown';
+    const threeBettorName = POSITION_DISPLAY[threeBettorKey] || threeBettorKey.toUpperCase();
+    return `You raised to 2.5x. The ${threeBettorName} goes all-in.`;
+  }
+
+  if (template.spotType === SpotType.FACING_OPEN) {
     const history = template.actionHistory;
     const openerMatch = history.match(/^(\w+)_opens/);
     const openerKey = openerMatch ? openerMatch[1] : 'unknown';
@@ -144,8 +186,14 @@ function buildSituation(spot: GeneratedSpot): string {
 // ── Choice and tip builders ──
 
 function buildChoices(correctAction: SimplifiedAction, spotType: SpotType, stackBb: number): string[] {
-  if (spotType === SpotType.FACING_OPEN || spotType === SpotType.FACING_3BET) {
+  if (spotType === SpotType.FACING_3BET) {
     return ['Fold', 'Call', 'All-in'];
+  }
+  if (spotType === SpotType.FACING_OPEN) {
+    return ['Fold', 'Call', 'All-in'];
+  }
+  if (spotType === SpotType.FACING_LIMP) {
+    return ['Fold', 'Limp behind', 'Raise', 'All-in'];
   }
   return ['Fold', 'Raise', 'All-in'];
 }
@@ -156,6 +204,7 @@ function getCorrectIndex(correctAction: SimplifiedAction, choices: string[]): nu
     open: ['Raise to 2.5x', 'Raise'],
     call: ['Call'],
     jam: ['Shove all-in', 'All-in'],
+    limp: ['Limp behind', 'Limp', 'Call'],
   };
   const matches = actionToChoice[correctAction] || [];
   for (const m of matches) {
@@ -166,7 +215,7 @@ function getCorrectIndex(correctAction: SimplifiedAction, choices: string[]): nu
 }
 
 const ACTION_DISPLAY: Record<string, string> = {
-  fold: 'Fold', open: 'Raise', call: 'Call', jam: 'All-in',
+  fold: 'Fold', open: 'Raise', call: 'Call', jam: 'All-in', limp: 'Limp behind',
 };
 // ── Validate that cards match handCode ──
 // This is the final safety net — if cards and handCode are ever out of sync,
@@ -217,7 +266,9 @@ function spotToPlayScenario(generated: GeneratedSpot, _rng: () => number): PlayH
   // Step 2: Re-derive the correct action from range-tables using handCode
   // Range-tables are the authoritative source of truth
   let verifiedAction: SimplifiedAction;
-  const isFacingOpen = template.spotType === SpotType.FACING_OPEN || template.spotType === SpotType.FACING_3BET;
+  const isFacingOpen = template.spotType === SpotType.FACING_OPEN;
+  const isFacingLimp = template.spotType === SpotType.FACING_LIMP;
+  const isFacing3Bet = template.spotType === SpotType.FACING_3BET;
   const posMap: Record<string, Position> = {
     utg: Position.UTG, utg1: Position.UTG1, mp: Position.MP,
     lj: Position.LJ, hj: Position.HJ, co: Position.CO,
@@ -225,14 +276,34 @@ function spotToPlayScenario(generated: GeneratedSpot, _rng: () => number): PlayH
   };
 
   let openerPos: Position | undefined;
-  if (isFacingOpen) {
+  let limperPos: Position | undefined;
+  let threeBettorPos: Position | undefined;
+
+  if (isFacingLimp) {
+    const actionHistory = template.actionHistory || '';
+    const limperMatch = actionHistory.match(/^(\w+)_limps/);
+    limperPos = limperMatch ? posMap[limperMatch[1]] : undefined;
+    if (limperPos) {
+      verifiedAction = getFacingLimpAction(limperPos, template.position as Position, template.stackDepthBb, handCode);
+    } else {
+      verifiedAction = spot.simplifiedAction;
+    }
+  } else if (isFacing3Bet) {
+    const actionHistory = template.actionHistory || '';
+    const match3Bet = actionHistory.match(/hero_opens_(\w+)_(\w+)_3bets/);
+    threeBettorPos = match3Bet ? posMap[match3Bet[2]] : undefined;
+    if (threeBettorPos) {
+      verifiedAction = getFacing3BetAction(template.position as Position, threeBettorPos, template.stackDepthBb, handCode);
+    } else {
+      verifiedAction = spot.simplifiedAction;
+    }
+  } else if (isFacingOpen) {
     const actionHistory = template.actionHistory || '';
     const openerMatch = actionHistory.match(/^(\w+)_opens/);
     openerPos = openerMatch ? posMap[openerMatch[1]] : undefined;
     if (openerPos) {
       verifiedAction = getFacingOpenAction(openerPos, template.position as Position, template.stackDepthBb, handCode);
     } else {
-      // Can't parse opener — fall back to spot's action but NEVER its explanation
       verifiedAction = spot.simplifiedAction;
     }
   } else {
@@ -249,15 +320,41 @@ function spotToPlayScenario(generated: GeneratedSpot, _rng: () => number): PlayH
   // reference a different hand. All text the user sees MUST come from handCode.
   let freshExplanation: { plain: string };
 
-  if (isFacingOpen && openerPos) {
+  if (isFacingLimp && limperPos) {
+    freshExplanation = verifiedAction === SimplifiedAction.OPEN
+      ? explainIsolateLimper(handCode, template.position as Position, limperPos, template.stackDepthBb)
+      : verifiedAction === SimplifiedAction.LIMP
+        ? explainLimpBehind(handCode, template.position as Position, limperPos, template.stackDepthBb)
+        : verifiedAction === SimplifiedAction.JAM
+          ? explainJamVsLimp(handCode, template.position as Position, limperPos, template.stackDepthBb)
+          : explainFoldVsLimp(handCode, template.position as Position, limperPos, template.stackDepthBb);
+  } else if (isFacingLimp && !limperPos) {
+    freshExplanation = verifiedAction === SimplifiedAction.OPEN
+      ? { plain: `With ${handCode} at ${template.stackDepthBb}bb, raising to isolate the limper is the best play. Limpers are weak — punish them.` }
+      : verifiedAction === SimplifiedAction.LIMP
+        ? { plain: `With ${handCode} at ${template.stackDepthBb}bb, limping behind is the best play. This hand has speculative value.` }
+        : verifiedAction === SimplifiedAction.JAM
+          ? { plain: `With ${handCode} at ${template.stackDepthBb}bb, going all-in over the limper is the best play. Maximum fold equity against a weak range.` }
+          : { plain: `With ${handCode} at ${template.stackDepthBb}bb, folding is the disciplined play. This hand is too weak even against a limper.` };
+  } else if (isFacing3Bet && threeBettorPos) {
+    freshExplanation = verifiedAction === SimplifiedAction.JAM
+      ? explain4BetJam(handCode, template.position as Position, threeBettorPos, template.stackDepthBb)
+      : verifiedAction === SimplifiedAction.CALL
+        ? explainCallVs3Bet(handCode, template.position as Position, threeBettorPos, template.stackDepthBb)
+        : explainFoldVs3Bet(handCode, template.position as Position, threeBettorPos, template.stackDepthBb);
+  } else if (isFacing3Bet && !threeBettorPos) {
+    freshExplanation = verifiedAction === SimplifiedAction.JAM
+      ? { plain: `With ${handCode} at ${template.stackDepthBb}bb, 4-bet jamming is the best play. This premium hand dominates the 3-bettor's range.` }
+      : verifiedAction === SimplifiedAction.CALL
+        ? { plain: `With ${handCode} at ${template.stackDepthBb}bb, calling the 3-bet is correct. Your hand is strong enough to continue.` }
+        : { plain: `With ${handCode} at ${template.stackDepthBb}bb, folding to the 3-bet is the disciplined play. Most of your opening range should fold here.` };
+  } else if (isFacingOpen && openerPos) {
     freshExplanation = verifiedAction === SimplifiedAction.JAM
       ? explainJamVsOpen(handCode, template.position as Position, openerPos, template.stackDepthBb)
       : verifiedAction === SimplifiedAction.CALL
         ? explainCallVsOpen(handCode, template.position as Position, openerPos, template.stackDepthBb)
         : explainFoldVsOpen(handCode, template.position as Position, openerPos, template.stackDepthBb);
   } else if (isFacingOpen && !openerPos) {
-    // Facing open but couldn't parse opener — generate a safe explanation from handCode
-    // NEVER fall back to spot.explanation which may reference a different hand
     freshExplanation = verifiedAction === SimplifiedAction.JAM
       ? { plain: `With ${handCode} at ${template.stackDepthBb}bb, going all-in is the best play. This hand is strong enough against the raiser's range to commit your stack.` }
       : verifiedAction === SimplifiedAction.CALL
