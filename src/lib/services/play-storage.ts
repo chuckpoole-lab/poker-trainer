@@ -464,3 +464,94 @@ export async function getAllFeedback(): Promise<TesterFeedback[]> {
   if (error) { console.error('Failed to fetch feedback:', error.message); return []; }
   return (data ?? []) as TesterFeedback[];
 }
+
+// ============ FLAGGED HANDS ============
+
+export interface FlaggedHandData {
+  handCode: string;
+  position: string;
+  stack: string;
+  situation: string;
+  cards: Array<{ rank: string; suit: string }>;
+  appAction: string;
+  userAction: string | null;
+  explanation: string;
+  note: string;
+  isBonus: boolean;
+}
+
+export interface FlaggedHand extends FlaggedHandData {
+  id: string;
+  user_id: string | null;
+  flagged_at: string;
+  status: string;
+  reviewer_note: string;
+  reviewed_at: string | null;
+}
+
+/** Flag a hand for review */
+export async function flagHand(
+  userId: string | null,
+  data: FlaggedHandData,
+): Promise<boolean> {
+  const { error } = await supabase
+    .from('flagged_hands')
+    .insert({
+      user_id: userId,
+      hand_code: data.handCode,
+      position: data.position,
+      stack: data.stack,
+      situation: data.situation,
+      card1_rank: data.cards[0]?.rank || '',
+      card1_suit: data.cards[0]?.suit || '',
+      card2_rank: data.cards[1]?.rank || '',
+      card2_suit: data.cards[1]?.suit || '',
+      app_action: data.appAction,
+      user_action: data.userAction,
+      explanation: data.explanation,
+      note: data.note,
+      is_bonus: data.isBonus,
+    });
+
+  if (error) {
+    console.error('Failed to flag hand:', error.message);
+    // Fallback: save to localStorage for guests or if Supabase fails
+    const flags = loadGuestData<FlaggedHandData[]>('flagged-hands', []);
+    flags.push(data);
+    saveGuestData('flagged-hands', flags);
+    return false;
+  }
+  return true;
+}
+
+/** Get all flagged hands (admin only) */
+export async function getAllFlaggedHands(): Promise<FlaggedHand[]> {
+  const { data, error } = await supabase
+    .from('flagged_hands')
+    .select('*')
+    .order('flagged_at', { ascending: false });
+
+  if (error) { console.error('Failed to fetch flagged hands:', error.message); return []; }
+  return (data ?? []) as FlaggedHand[];
+}
+
+/** Update flagged hand status (admin only) */
+export async function updateFlaggedHandStatus(
+  flagId: string,
+  status: 'open' | 'agreed' | 'adjusted' | 'dismissed',
+  reviewerNote: string,
+  reviewerId: string,
+): Promise<boolean> {
+  const { error } = await supabase
+    .from('flagged_hands')
+    .update({
+      status,
+      reviewer_note: reviewerNote,
+      reviewed_at: new Date().toISOString(),
+      reviewed_by: reviewerId,
+    })
+    .eq('id', flagId);
+
+  if (error) { console.error('Failed to update flag:', error.message); return false; }
+  return true;
+}

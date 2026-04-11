@@ -20,6 +20,7 @@ import {
 
 export interface PlayHandScenario {
   id: string;
+  handCode: string;
   position: string;
   stack: string;
   situation: string;
@@ -286,6 +287,7 @@ function spotToPlayScenario(generated: GeneratedSpot, _rng: () => number): PlayH
     const correctedTip = `With ${handCode} at ${template.stackDepthBb}bb from ${pos}, the correct play is ${actionLabel.toLowerCase()}.`;
     return {
       id: spot.id,
+      handCode,
       position: pos,
       stack: `${template.stackDepthBb} blinds`,
       situation,
@@ -299,6 +301,7 @@ function spotToPlayScenario(generated: GeneratedSpot, _rng: () => number): PlayH
 
   return {
     id: spot.id,
+    handCode,
     position: pos,
     stack: `${template.stackDepthBb} blinds`,
     situation,

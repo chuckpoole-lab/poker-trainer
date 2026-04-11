@@ -24,7 +24,7 @@ import {
 import { trackHandPlayed } from '@/lib/services/session-tracker';
 import Onboarding from '@/components/play/Onboarding';
 import { FeedbackSurvey, WelcomeToast, FeedbackButton, type FeedbackData } from '@/components/play/FeedbackSurvey';
-import { submitFeedback } from '@/lib/services/play-storage';
+import { submitFeedback, flagHand, type FlaggedHandData } from '@/lib/services/play-storage';
 
 const SUIT_SYM: Record<string, string> = { h: '\u2665', d: '\u2666', c: '\u2663', s: '\u2660' };
 const DAILY_COUNT = 5;
@@ -63,9 +63,9 @@ function StatPill({ icon, value, label, bg, borderColor, color }: {
 }
 
 // ── Daily Hands Game component ──
-function DailyHandsGame({ hands, iq, streak, rank, isBonus, onComplete, onBonusResult }: {
+function DailyHandsGame({ hands, iq, streak, rank, isBonus, userId, onComplete, onBonusResult }: {
   hands: PlayHandScenario[]; iq: number; streak: number; rank: number;
-  isBonus: boolean;
+  isBonus: boolean; userId: string | null;
   onComplete: (score: number, results: boolean[], newIq: number) => void;
   onBonusResult: (correct: boolean) => void;
 }) {
@@ -76,6 +76,9 @@ function DailyHandsGame({ hands, iq, streak, rank, isBonus, onComplete, onBonusR
   const [selected, setSelected] = useState<number | null>(null);
   const [showTip, setShowTip] = useState(false);
   const [currentIq, setCurrentIq] = useState(iq);
+  const [flagged, setFlagged] = useState(false);
+  const [showFlagNote, setShowFlagNote] = useState(false);
+  const [flagNote, setFlagNote] = useState('');
 
   const hand = frozenHands.current[handIdx];
   if (!hand) return null;
@@ -91,6 +94,24 @@ function DailyHandsGame({ hands, iq, streak, rank, isBonus, onComplete, onBonusR
     if (isBonus) onBonusResult(correct);
   };
 
+  const handleFlag = async () => {
+    const data: FlaggedHandData = {
+      handCode: hand.handCode,
+      position: hand.position,
+      stack: hand.stack,
+      situation: hand.situation,
+      cards: hand.cards,
+      appAction: hand.choices[hand.correct],
+      userAction: selected !== null ? hand.choices[selected] : null,
+      explanation: hand.tipWrong,
+      note: flagNote,
+      isBonus,
+    };
+    await flagHand(userId, data);
+    setFlagged(true);
+    setShowFlagNote(false);
+  };
+
   const nextHand = () => {
     if (handIdx >= hands.length - 1) {
       onComplete(results.filter(Boolean).length, results, currentIq);
@@ -98,6 +119,9 @@ function DailyHandsGame({ hands, iq, streak, rank, isBonus, onComplete, onBonusR
       setHandIdx(prev => prev + 1);
       setSelected(null);
       setShowTip(false);
+      setFlagged(false);
+      setShowFlagNote(false);
+      setFlagNote('');
     }
   };
 
@@ -203,6 +227,50 @@ function DailyHandsGame({ hands, iq, streak, rank, isBonus, onComplete, onBonusR
               <div style={{ fontSize: 14, color: isCorrect ? '#065f46' : '#991b1b', lineHeight: 1.6 }}>
                 {isCorrect ? hand.tipRight : hand.tipWrong}
               </div>
+
+              {/* Flag this hand button */}
+              {!flagged && !showFlagNote && (
+                <button onClick={() => setShowFlagNote(true)} style={{
+                  display: 'flex', alignItems: 'center', gap: 6, marginTop: 10,
+                  background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0',
+                  fontSize: 12, fontWeight: 600, color: '#94a3b8',
+                  fontFamily: 'var(--font-body, inherit)',
+                }}>
+                  <span style={{ fontSize: 14 }}>{'\u{1F6A9}'}</span> Challenge this recommendation
+                </button>
+              )}
+              {showFlagNote && !flagged && (
+                <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <input
+                    type="text"
+                    placeholder="Why do you disagree? (optional)"
+                    value={flagNote}
+                    onChange={e => setFlagNote(e.target.value)}
+                    style={{
+                      width: '100%', padding: '8px 10px', fontSize: 13, borderRadius: 8,
+                      border: '1.5px solid #e2e8f0', background: '#fff', color: '#1a1a1a',
+                      fontFamily: 'var(--font-body, inherit)', boxSizing: 'border-box',
+                    }}
+                  />
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={handleFlag} style={{
+                      flex: 1, padding: '8px 12px', fontSize: 13, fontWeight: 700,
+                      background: '#f59e0b', color: '#fff', border: 'none', borderRadius: 8,
+                      cursor: 'pointer', fontFamily: 'var(--font-body, inherit)',
+                    }}>Flag for review</button>
+                    <button onClick={() => setShowFlagNote(false)} style={{
+                      padding: '8px 12px', fontSize: 13, fontWeight: 600,
+                      background: '#f1f5f9', color: '#64748b', border: 'none', borderRadius: 8,
+                      cursor: 'pointer', fontFamily: 'var(--font-body, inherit)',
+                    }}>Cancel</button>
+                  </div>
+                </div>
+              )}
+              {flagged && (
+                <div style={{ marginTop: 8, fontSize: 12, fontWeight: 600, color: '#f59e0b' }}>
+                  {'\u{1F6A9}'} Flagged for review — thanks!
+                </div>
+              )}
             </div>
             <button onClick={nextHand} style={{
               width: '100%', padding: 14, fontSize: 15, fontWeight: 700,
@@ -550,7 +618,7 @@ export default function PlayPage() {
       <DailyHandsGame
         key={`bonus-${bonusHands[0]?.id || Date.now()}`}
         hands={bonusHands} iq={iq} streak={streak} rank={rank}
-        isBonus={true} onComplete={handleBonusComplete} onBonusResult={handleBonusResult}
+        isBonus={true} userId={user?.id || null} onComplete={handleBonusComplete} onBonusResult={handleBonusResult}
       />
     );
   }
@@ -561,7 +629,7 @@ export default function PlayPage() {
       <DailyHandsGame
         key={`daily-${dailyHands[0]?.id || 'loading'}`}
         hands={dailyHands} iq={iq} streak={streak} rank={rank}
-        isBonus={false} onComplete={handleDailyComplete} onBonusResult={() => {}}
+        isBonus={false} userId={user?.id || null} onComplete={handleDailyComplete} onBonusResult={() => {}}
       />
     );
   }

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/services/auth-context';
 import { getAllUsersStats, toggleUserAdmin } from '@/lib/services/cloud-storage';
-import { getAllFeedback, type TesterFeedback } from '@/lib/services/play-storage';
+import { getAllFeedback, getAllFlaggedHands, updateFlaggedHandStatus, type TesterFeedback, type FlaggedHand } from '@/lib/services/play-storage';
 import { getDailyStats, getStatsRange, type DailyStatsResult } from '@/lib/services/session-tracker';
 import { Card, Badge, Button } from '@/components/ui';
 import LeagueManager from '@/components/admin/LeagueManager';
@@ -24,13 +24,14 @@ interface UserStat {
   lastActive: string;
 }
 
-type AdminTab = 'stats' | 'users' | 'leagues' | 'feedback';
+type AdminTab = 'stats' | 'users' | 'leagues' | 'feedback' | 'flags';
 
 export default function AdminDashboard() {
   const { user, profile, loading } = useAuth();
   const router = useRouter();
   const [users, setUsers] = useState<UserStat[]>([]);
   const [feedback, setFeedback] = useState<TesterFeedback[]>([]);
+  const [flaggedHands, setFlaggedHands] = useState<FlaggedHand[]>([]);
   const [dailyStats, setDailyStats] = useState<DailyStatsResult | null>(null);
   const [yesterdayStats, setYesterdayStats] = useState<DailyStatsResult | null>(null);
   const [weekStats, setWeekStats] = useState<DailyStatsResult[]>([]);
@@ -42,11 +43,13 @@ export default function AdminDashboard() {
       Promise.all([
         getAllUsersStats(),
         getAllFeedback(),
+        getAllFlaggedHands(),
         getDailyStats(),
         getStatsRange(7),
-      ]).then(([userData, feedbackData, todayStats, rangeStats]) => {
+      ]).then(([userData, feedbackData, flagsData, todayStats, rangeStats]) => {
         setUsers(userData as UserStat[]);
         setFeedback(feedbackData);
+        setFlaggedHands(flagsData);
         setDailyStats(todayStats);
         setYesterdayStats(rangeStats.length > 1 ? rangeStats[1] : null);
         setWeekStats(rangeStats);
@@ -117,6 +120,7 @@ export default function AdminDashboard() {
     { key: 'users', label: 'Users', icon: '👥' },
     { key: 'leagues', label: 'Leagues', icon: '🏆' },
     { key: 'feedback', label: `Feedback (${feedback.length})`, icon: '💬' },
+    { key: 'flags', label: `Flags (${flaggedHands.filter(f => f.status === 'open').length})`, icon: '🚩' },
   ];
 
   return (
@@ -557,6 +561,113 @@ export default function AdminDashboard() {
                   )}
                 </Card>
               ))}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* ── Flagged Hands Tab ── */}
+      {activeTab === 'flags' && (
+        <>
+          {flaggedHands.length === 0 ? (
+            <p style={{ color: 'var(--muted)', fontFamily: 'var(--font-body)', textAlign: 'center', padding: 40 }}>No hands flagged yet.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {/* Summary */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8, marginBottom: 10 }}>
+                {[
+                  { label: 'Open', count: flaggedHands.filter(f => f.status === 'open').length, color: '#f59e0b' },
+                  { label: 'Agreed', count: flaggedHands.filter(f => f.status === 'agreed').length, color: '#10b981' },
+                  { label: 'Adjusted', count: flaggedHands.filter(f => f.status === 'adjusted').length, color: '#8b5cf6' },
+                  { label: 'Dismissed', count: flaggedHands.filter(f => f.status === 'dismissed').length, color: '#94a3b8' },
+                ].map(s => (
+                  <Card key={s.label} elevation="raised" style={{ padding: 10, textAlign: 'center' }}>
+                    <div style={{ fontSize: 22, fontWeight: 800, color: s.color, fontFamily: 'var(--font-display)' }}>{s.count}</div>
+                    <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>{s.label}</div>
+                  </Card>
+                ))}
+              </div>
+
+              {/* Flagged hand cards */}
+              {flaggedHands.map((flag) => {
+                const SUIT_SYM: Record<string, string> = { h: '\u2665', d: '\u2666', c: '\u2663', s: '\u2660' };
+                const statusColors: Record<string, string> = {
+                  open: '#f59e0b', agreed: '#10b981', adjusted: '#8b5cf6', dismissed: '#94a3b8',
+                };
+                return (
+                  <Card key={flag.id} elevation="raised" style={{ padding: 16 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 18, fontWeight: 800, fontFamily: 'var(--font-display)', color: 'var(--on-surface)' }}>
+                          {flag.card1_rank}{SUIT_SYM[flag.card1_suit] || ''} {flag.card2_rank}{SUIT_SYM[flag.card2_suit] || ''}
+                        </span>
+                        <Badge variant="outlined" style={{ fontSize: 11 }}>{flag.hand_code}</Badge>
+                      </div>
+                      <Badge variant="filled" style={{
+                        fontSize: 10, background: statusColors[flag.status] || '#94a3b8', color: '#fff',
+                      }}>{flag.status}</Badge>
+                    </div>
+
+                    <div style={{ fontSize: 12, color: 'var(--muted)', fontFamily: 'var(--font-body)', marginBottom: 6 }}>
+                      {flag.position} &middot; {flag.stack} &middot; {flag.is_bonus ? 'Bonus' : 'Daily'}
+                    </div>
+
+                    <div style={{ fontSize: 13, color: 'var(--on-surface)', fontFamily: 'var(--font-body)', lineHeight: 1.5, marginBottom: 6 }}>
+                      <strong>App says:</strong> {flag.app_action}
+                      {flag.user_action && <span> &middot; <strong>User chose:</strong> {flag.user_action}</span>}
+                    </div>
+
+                    <div style={{ fontSize: 12, color: 'var(--muted)', fontFamily: 'var(--font-body)', lineHeight: 1.5, marginBottom: 6, fontStyle: 'italic' }}>
+                      {flag.explanation.substring(0, 200)}{flag.explanation.length > 200 ? '...' : ''}
+                    </div>
+
+                    {flag.note && (
+                      <div style={{ fontSize: 12, color: '#f59e0b', fontFamily: 'var(--font-body)', marginBottom: 6 }}>
+                        {'\u{1F6A9}'} &ldquo;{flag.note}&rdquo;
+                      </div>
+                    )}
+
+                    <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>
+                      {new Date(flag.flagged_at).toLocaleDateString()} {new Date(flag.flagged_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </div>
+
+                    {/* Review actions for open flags */}
+                    {flag.status === 'open' && user && (
+                      <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
+                        {(['agreed', 'adjusted', 'dismissed'] as const).map(action => (
+                          <button
+                            key={action}
+                            onClick={async () => {
+                              const note = action === 'adjusted'
+                                ? prompt('What was adjusted?') || ''
+                                : action === 'dismissed'
+                                  ? prompt('Why dismissed?') || ''
+                                  : 'Confirmed — range needs fixing';
+                              await updateFlaggedHandStatus(flag.id, action, note, user.id);
+                              setFlaggedHands(prev => prev.map(f =>
+                                f.id === flag.id ? { ...f, status: action, reviewer_note: note } : f
+                              ));
+                            }}
+                            style={{
+                              padding: '6px 12px', fontSize: 11, fontWeight: 700, borderRadius: 6,
+                              border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)',
+                              background: statusColors[action], color: '#fff',
+                            }}
+                          >
+                            {action === 'agreed' ? 'Agree (needs fix)' : action === 'adjusted' ? 'Adjusted' : 'Dismiss'}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {flag.reviewer_note && (
+                      <div style={{ marginTop: 8, fontSize: 12, color: 'var(--on-surface)', fontFamily: 'var(--font-body)', background: 'var(--surface-high)', borderRadius: 6, padding: '6px 10px' }}>
+                        <strong>Review note:</strong> {flag.reviewer_note}
+                      </div>
+                    )}
+                  </Card>
+                );
+              })}
             </div>
           )}
         </>
