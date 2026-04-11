@@ -167,18 +167,51 @@ function getCorrectIndex(correctAction: SimplifiedAction, choices: string[]): nu
 const ACTION_DISPLAY: Record<string, string> = {
   fold: 'Fold', open: 'Raise', call: 'Call', jam: 'All-in',
 };
+// ── Validate that cards match handCode ──
+// This is the final safety net — if cards and handCode are ever out of sync,
+// this catches it before the user sees a mismatch.
+function validateCardsMatchHandCode(
+  cards: Array<{ rank: string; suit: string }>,
+  handCode: string
+): boolean {
+  if (cards.length !== 2) return false;
+  const rank1 = handCode[0];
+  const rank2 = handCode.length >= 2 ? handCode[1] : rank1;
+  const isSuited = handCode.endsWith('s');
+
+  // Ranks must match
+  if (cards[0].rank !== rank1 || cards[1].rank !== rank2) return false;
+
+  // Suited hands must have same suit, offsuit/pairs must have different suits
+  if (isSuited && cards[0].suit !== cards[1].suit) return false;
+  if (!isSuited && rank1 !== rank2 && cards[0].suit === cards[1].suit) return false;
+
+  return true;
+}
+
 // ── Convert a generated spot into a PlayHandScenario ──
 // CRITICAL: This function is the single source of truth for what the user sees.
-// Cards, correct action, and explanation are ALL derived from the same handCode
-// to make it IMPOSSIBLE for them to reference different hands.
+// Cards, correct action, and explanation are ALL derived from the same handCode.
+// A final validation step ensures nothing is out of sync before returning.
 
-function spotToPlayScenario(generated: GeneratedSpot, rng: () => number): PlayHandScenario {
+function spotToPlayScenario(generated: GeneratedSpot, _rng: () => number): PlayHandScenario {
   const { spot, template } = generated;
   const pos = POSITION_DISPLAY[template.position] || POSITION_LABELS[template.position as Position];
   const handCode = spot.handCode;
 
   // Step 1: Generate cards directly from handCode (deterministic, no RNG dependency)
   const cards = parseHandCode(handCode);
+
+  // SAFETY CHECK: Validate cards match handCode before proceeding
+  if (!validateCardsMatchHandCode(cards, handCode)) {
+    console.error(`[PokerTrainer] CRITICAL: parseHandCode produced cards that don't match handCode "${handCode}". Cards: ${JSON.stringify(cards)}. Regenerating.`);
+    // Force-rebuild cards from handCode characters as absolute fallback
+    const rank1 = handCode[0];
+    const rank2 = handCode.length >= 2 ? handCode[1] : rank1;
+    const isSuited = handCode.endsWith('s');
+    cards[0] = { rank: rank1, suit: 'h' };
+    cards[1] = { rank: rank2, suit: isSuited ? 'h' : 'd' };
+  }
 
   // Step 2: Re-derive the correct action from range-tables using handCode
   // Range-tables are the authoritative source of truth
@@ -198,6 +231,7 @@ function spotToPlayScenario(generated: GeneratedSpot, rng: () => number): PlayHa
     if (openerPos) {
       verifiedAction = getFacingOpenAction(openerPos, template.position as Position, template.stackDepthBb, handCode);
     } else {
+      // Can't parse opener — fall back to spot's action but NEVER its explanation
       verifiedAction = spot.simplifiedAction;
     }
   } else {
@@ -208,9 +242,10 @@ function spotToPlayScenario(generated: GeneratedSpot, rng: () => number): PlayHa
   if (verifiedAction !== spot.simplifiedAction) {
     console.warn(`[PokerTrainer] Action mismatch: spot=${spot.simplifiedAction} vs range-tables=${verifiedAction} for ${handCode} at ${template.position} ${template.stackDepthBb}bb. Using range-tables.`);
   }
-  // Step 3: Generate FRESH explanation directly from handCode + verifiedAction
-  // This is the key fix — we NEVER use the pre-cached spot.explanation
-  // because it could reference a different hand due to caching/CDN inconsistency
+
+  // Step 3: Generate FRESH explanation ALWAYS from handCode + verifiedAction
+  // NEVER use spot.explanation — it is generated at a different time and could
+  // reference a different hand. All text the user sees MUST come from handCode.
   let freshExplanation: { plain: string };
 
   if (isFacingOpen && openerPos) {
@@ -219,16 +254,22 @@ function spotToPlayScenario(generated: GeneratedSpot, rng: () => number): PlayHa
       : verifiedAction === SimplifiedAction.CALL
         ? explainCallVsOpen(handCode, template.position as Position, openerPos, template.stackDepthBb)
         : explainFoldVsOpen(handCode, template.position as Position, openerPos, template.stackDepthBb);
-  } else if (!isFacingOpen) {
+  } else if (isFacingOpen && !openerPos) {
+    // Facing open but couldn't parse opener — generate a safe explanation from handCode
+    // NEVER fall back to spot.explanation which may reference a different hand
+    freshExplanation = verifiedAction === SimplifiedAction.JAM
+      ? { plain: `With ${handCode} at ${template.stackDepthBb}bb, going all-in is the best play. This hand is strong enough against the raiser's range to commit your stack.` }
+      : verifiedAction === SimplifiedAction.CALL
+        ? { plain: `With ${handCode} at ${template.stackDepthBb}bb, calling is the right play. The hand has good playability and implied odds against the raiser.` }
+        : { plain: `With ${handCode} at ${template.stackDepthBb}bb, folding is the disciplined play. This hand is too weak against the raiser's range to continue profitably.` };
+  } else {
     freshExplanation = verifiedAction === SimplifiedAction.OPEN
       ? explainOpen(handCode, template.position as Position, template.stackDepthBb)
       : verifiedAction === SimplifiedAction.JAM
         ? explainJamUnopened(handCode, template.position as Position, template.stackDepthBb)
         : explainFoldUnopened(handCode, template.position as Position, template.stackDepthBb);
-  } else {
-    // Fallback: use spot's pre-cached explanation (facing open but no opener parsed)
-    freshExplanation = spot.explanation;
   }
+
   const situation = buildSituation(generated);
   const choices = buildChoices(verifiedAction, template.spotType as SpotType, template.stackDepthBb);
   const correct = getCorrectIndex(verifiedAction, choices);
@@ -237,6 +278,24 @@ function spotToPlayScenario(generated: GeneratedSpot, rng: () => number): PlayHa
   const actionLabel = ACTION_DISPLAY[verifiedAction] || verifiedAction;
   const tipRight = freshExplanation.plain;
   const tipWrong = `The correct play is ${actionLabel}. ${freshExplanation.plain}`;
+
+  // FINAL SAFETY: Verify the explanation actually contains the handCode
+  // This catches any edge case where explanation text references a different hand
+  if (!tipRight.includes(handCode)) {
+    console.error(`[PokerTrainer] CRITICAL: Explanation does not contain handCode "${handCode}". Tip: "${tipRight.substring(0, 80)}...". Forcing correction.`);
+    const correctedTip = `With ${handCode} at ${template.stackDepthBb}bb from ${pos}, the correct play is ${actionLabel.toLowerCase()}.`;
+    return {
+      id: spot.id,
+      position: pos,
+      stack: `${template.stackDepthBb} blinds`,
+      situation,
+      cards,
+      choices,
+      correct,
+      tipRight: correctedTip,
+      tipWrong: `The correct play is ${actionLabel}. ${correctedTip}`,
+    };
+  }
 
   return {
     id: spot.id,

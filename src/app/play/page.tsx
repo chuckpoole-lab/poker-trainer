@@ -69,13 +69,15 @@ function DailyHandsGame({ hands, iq, streak, rank, isBonus, onComplete, onBonusR
   onComplete: (score: number, results: boolean[], newIq: number) => void;
   onBonusResult: (correct: boolean) => void;
 }) {
+  // Freeze the hands array on first render so parent re-renders can't swap hands mid-game
+  const frozenHands = useRef(hands);
   const [handIdx, setHandIdx] = useState(0);
   const [results, setResults] = useState<boolean[]>([]);
   const [selected, setSelected] = useState<number | null>(null);
   const [showTip, setShowTip] = useState(false);
   const [currentIq, setCurrentIq] = useState(iq);
 
-  const hand = hands[handIdx];
+  const hand = frozenHands.current[handIdx];
   if (!hand) return null;
   const isCorrect = selected === hand.correct;
 
@@ -546,6 +548,7 @@ export default function PlayPage() {
   if (screen === 'bonus') {
     return (
       <DailyHandsGame
+        key={`bonus-${bonusHands[0]?.id || Date.now()}`}
         hands={bonusHands} iq={iq} streak={streak} rank={rank}
         isBonus={true} onComplete={handleBonusComplete} onBonusResult={handleBonusResult}
       />
@@ -556,6 +559,7 @@ export default function PlayPage() {
   if (screen === 'game') {
     return (
       <DailyHandsGame
+        key={`daily-${dailyHands[0]?.id || 'loading'}`}
         hands={dailyHands} iq={iq} streak={streak} rank={rank}
         isBonus={false} onComplete={handleDailyComplete} onBonusResult={() => {}}
       />
