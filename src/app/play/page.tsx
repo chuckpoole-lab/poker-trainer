@@ -829,14 +829,14 @@ export default function PlayPage() {
         </div>
 
         <div style={{ fontSize: 12, fontWeight: 700, color: '#10b981', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>New</div>
-        {['Daily Hands challenge with Poker IQ scoring', 'Unlimited bonus rounds after daily challenge', 'Position-aware coaching tips on every hand', 'Learn the Basics onboarding for new players'].map(f => (
+        {['Facing limpers \u2014 isolate, limp behind, or jam over weak limps', '3-bet training \u2014 know when to call, fold, or 4-bet jam', 'Challenge any hand \u2014 flag recommendations you disagree with', 'Daily Hands challenge with Poker IQ scoring', 'Unlimited bonus rounds after daily challenge', 'Position-aware coaching tips on every hand'].map(f => (
           <div key={f} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', fontSize: 13, color: 'var(--on-surface, #1a1a1a)' }}>
             <span style={{ color: '#10b981', fontSize: 14 }}>{'\u2713'}</span> {f}
           </div>
         ))}
 
         <div style={{ fontSize: 12, fontWeight: 700, color: '#8b5cf6', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 12, marginBottom: 6 }}>Coming soon</div>
-        {['Survival Mode \u2014 how many hands can you survive?', 'Raise sizing strategy training', '3-betting and re-raise scenarios', 'Facing limpers \u2014 exploit the most common bar poker play', 'League leaderboards and weekly rankings', 'Hand logger for tracking your live sessions'].map(f => (
+        {['Survival Mode \u2014 how many hands can you survive?', 'Raise sizing strategy training', 'League leaderboards and weekly rankings', 'Hand logger for tracking your live sessions'].map(f => (
           <div key={f} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', fontSize: 13, color: '#64748b' }}>
             <span style={{ color: '#8b5cf6', fontSize: 14 }}>{'\u25CB'}</span> {f}
           </div>
