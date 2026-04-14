@@ -142,7 +142,9 @@ const OPENING_RANGES_RAW: Record<number, Record<string, { open: string; jam: str
     [Position.UTG]: { open: '', jam: '66+, A3s+, KTs+, QTs+, JTs+, A8o+, KTo+, QJo+' },
     [Position.HJ]:  { open: '88-JJ', jam: '55-77, QQ+, A3s+, K9s+, QTs+, JTs+, A7o+, KTo+, QJo+' },
     [Position.CO]:  { open: '77-JJ', jam: '55-66, QQ+, A3s+, K9s+, QTs+, JTs+, A7o+, KTo+, QJo+' },
-    [Position.BTN]: { open: '66-JJ', jam: '44-55, QQ+, A3s+, K9s+, QTs+, JTs+, A7o+, KTo+, QTo+' },
+    // BTN 15bb widened 2026-04-14: previous range was 21% playable, below GTO 35-40% target.
+    // BTN should be meaningfully wider than CO (faces only 2 opponents vs 3). New range: ~36% playable.
+    [Position.BTN]: { open: '88-JJ', jam: '22-77, QQ+, A2s+, K7s+, Q8s+, J8s+, T8s+, 98s, A2o+, K8o+, Q9o+, J9o+, T9o' },
     [Position.SB]:  { open: '', jam: '22+, A2s+, K8s+, Q9s+, J9s+, T9s+, A5o+, KTo+, QTo+, JTo+' },
   },
   20: {
@@ -483,12 +485,18 @@ export function getFacingLimpAction(
 
   const key = `${limperPos}_${heroPos}_${closest}`;
   const ranges = COMPILED_RANGES.facingLimp.get(key);
-  if (!ranges) return SimplifiedAction.FOLD;
+
+  // Special case: BB facing SB-complete — BB has already posted the blind,
+  // so Fold is never a legal action. The catchall must be LIMP (check/take
+  // free flop), not FOLD.
+  const isBbDefendingVsSbComplete = limperPos === Position.SB && heroPos === Position.BB;
+
+  if (!ranges) return isBbDefendingVsSbComplete ? SimplifiedAction.LIMP : SimplifiedAction.FOLD;
 
   if (ranges.jam.has(handCode)) return SimplifiedAction.JAM;
   if (ranges.raise.has(handCode)) return SimplifiedAction.OPEN;
   if (ranges.limp.has(handCode)) return SimplifiedAction.LIMP;
-  return SimplifiedAction.FOLD;
+  return isBbDefendingVsSbComplete ? SimplifiedAction.LIMP : SimplifiedAction.FOLD;
 }
 
 export function getFacing3BetAction(

@@ -65,8 +65,18 @@ function safeSet(key: string, value: unknown): void {
   }
 }
 
+// Timezone note: progress dates must use Eastern Time (America/New_York) to match
+// session-tracker.ts and the Supabase get_daily_stats function. Using UTC here
+// causes evening users' drills to log as tomorrow's date (7 PM ET = next-day UTC),
+// which breaks streak continuity and daily/weekly stats rollups.
 function todayStr(): string {
-  return new Date().toISOString().slice(0, 10);
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+}
+
+function yesterdayStr(): string {
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  return yesterday.toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
 }
 
 function uuid(): string {
@@ -132,12 +142,8 @@ function updateStreak(): void {
 
   if (data.lastActiveDate === today) return; // already counted today
 
-  // Check if yesterday was active
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayStr = yesterday.toISOString().slice(0, 10);
-
-  if (data.lastActiveDate === yesterdayStr) {
+  // Check if yesterday was active (Eastern Time — must match today's timezone)
+  if (data.lastActiveDate === yesterdayStr()) {
     // Consecutive day
     safeSet(KEYS.STREAK, { currentStreak: data.currentStreak + 1, lastActiveDate: today });
   } else {
@@ -168,15 +174,11 @@ export function getProgressStats(): ProgressStats {
   const allCorrect = totalCorrect + assessCorrect;
   const allTotal = totalAnswered + assessTotal;
 
-  // Streak: check if still active
+  // Streak: check if still active (Eastern Time — must match save logic)
   let streakDays = 0;
   if (streakData) {
     const today = todayStr();
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().slice(0, 10);
-
-    if (streakData.lastActiveDate === today || streakData.lastActiveDate === yesterdayStr) {
+    if (streakData.lastActiveDate === today || streakData.lastActiveDate === yesterdayStr()) {
       streakDays = streakData.currentStreak;
     }
     // else streak has expired

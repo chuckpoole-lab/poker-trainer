@@ -209,11 +209,17 @@ function buildSituation(
 //  Choices and correct-index builder
 // ─────────────────────────────────────────────
 
-function buildChoices(spotType: string): string[] {
+function buildChoices(spotType: string, heroKey?: string, opponentKey?: string): string[] {
   if (spotType === 'facing_3bet' || spotType === 'facing_open') {
     return ['Fold', 'Call', 'All-in'];
   }
   if (spotType === 'facing_limp') {
+    // Special case: BB defending vs SB-complete. BB has already posted,
+    // so "Fold" is not a legal action. Use "Check" (free flop) instead of
+    // "Limp behind" since BB already completed the bet.
+    if (opponentKey === 'sb' && heroKey === 'bb') {
+      return ['Check', 'Raise', 'All-in'];
+    }
     return ['Fold', 'Limp behind', 'Raise', 'All-in'];
   }
   return ['Fold', 'Raise', 'All-in'];
@@ -225,7 +231,8 @@ function correctChoiceIndex(action: SimplifiedAction, choices: string[]): number
     open: ['Raise to 2.5x', 'Raise'],
     call: ['Call'],
     jam: ['All-in', 'Shove all-in'],
-    limp: ['Limp behind', 'Limp', 'Call'],
+    // "Check" is the BB-vs-SB-complete equivalent of limping behind
+    limp: ['Limp behind', 'Limp', 'Check', 'Call'],
   };
   for (const label of (map[action] ?? [])) {
     const idx = choices.findIndex(c => c.includes(label));
@@ -320,7 +327,7 @@ function buildScenario(
   const situation = buildSituation(spotType, heroKey, opponentKey);
 
   // ── 5. Choices + correct index ──
-  const choices = buildChoices(spotType);
+  const choices = buildChoices(spotType, heroKey, opponentKey);
   const correct = correctChoiceIndex(action, choices);
   const actionLabel = ACTION_LABEL[action] ?? action;
 
