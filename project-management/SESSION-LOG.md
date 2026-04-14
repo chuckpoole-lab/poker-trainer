@@ -4,6 +4,73 @@ This file is updated at the end of every work session. Read this first when star
 
 ---
 
+## Session: April 14, 2026
+**Focus:** Catch-up review after chat-session work, code review across all April 6–13 commits, clear critical bugs
+
+### What was done
+
+**Doc reconciliation (2 commits):**
+- Discovered two commits made in regular Claude chat (not cowork) that weren't in SESSION-LOG: `2bba710` (Apr 11 bulletproof validation) and `9da7897` (Apr 13 full scenario generator rewrite).
+- Reconciled two divergent DEVLOG.md files (repo root vs project-management). Designated `project-management/DEVLOG.md` as canonical; synced repo-root to match.
+- Renumbered April 13 scenario rewrite from v0.9.2 → **v0.10.1** (v0.9.2 and v0.10.0 were already used for different work in the project-management devlog).
+- Added POSTFLOP-DESIGN.md to git tracking.
+- Added full April 11 afternoon and April 13 session entries to SESSION-LOG.
+- Backups of all doc files at `project-management/_backups/2026-04-14/` before changes.
+- Commits: `0ff46e6` (April 11 catch-up), `2cde7b4` (DEVLOG reconciliation).
+
+**Code review (3 parallel agents, all 10 commits since April 6):**
+- Architecture verdict: **v2 scenario generator is clean.** No dead code from April 11 patch, RNG isolation works, no closure leaks.
+- Full review report saved at `project-management/code-review-2026-04-14/` with one SUMMARY.md and three detailed reports.
+
+**Critical bugs fixed from review (1 commit):**
+
+1. **Timezone bug in drill logging** (`src/lib/services/progress-storage.ts`)
+   - `todayStr()` was using UTC via `toISOString().slice(0, 10)`. After 7 PM Eastern, drills logged as tomorrow's date, breaking streak continuity.
+   - Fixed three spots (todayStr, inline yesterday in updateStreak, inline yesterday in getProgressStats). Now all use `toLocaleDateString('en-CA', { timeZone: 'America/New_York' })` matching session-tracker.ts pattern.
+   - Added `yesterdayStr()` helper to avoid duplication.
+
+2. **BTN 15bb opening range widened** (`src/lib/data/range-tables.ts`)
+   - Previous range: `open='66-JJ', jam='44-55, QQ+, A3s+, K9s+, QTs+, JTs+, A7o+, KTo+, QTo+'` = ~21% playable (review agent said 2.7% but was only counting `open`, not jam).
+   - Issue: narrower than CO 15bb (which should be tighter since CO faces 3 opponents vs BTN's 2). Work plan target: 35-40%.
+   - New range: `open='88-JJ', jam='22-77, QQ+, A2s+, K7s+, Q8s+, J8s+, T8s+, 98s, A2o+, K8o+, Q9o+, J9o+, T9o'` = ~36% playable.
+   - Manually constructed (not solver-regenerated) — the solver appears to have a calibration issue at 15bb BTN.
+
+3. **SB-complete → BB scenarios fixed** (`src/lib/data/range-tables.ts` + `src/lib/services/play-scenario-generator.ts`)
+   - Bug 1: `getFacingLimpAction()` returned `FOLD` as catchall for unassigned hands. BB has already posted the blind — Fold is not a legal action. Added special case: if limper=SB and hero=BB, catchall is `LIMP` (check/take free flop), not `FOLD`.
+   - Bug 2: `buildChoices()` offered `['Fold', 'Limp behind', 'Raise', 'All-in']` for all facing-limp scenarios including SB→BB. Changed to return `['Check', 'Raise', 'All-in']` when limper=SB and hero=BB.
+   - Bug 3: `correctChoiceIndex()` limp action mapping didn't recognize 'Check'. Added 'Check' to the limp label synonyms.
+
+**Validation (all passing):**
+- TypeScript: 0 errors
+- `validate-scenarios.mjs`: 4,380 / 4,380 passed
+- `test-card-consistency.mjs`: 5,916 / 5,916 passed
+- Manual check: SB→BB limp now returns `['Check', 'Raise', 'All-in']`; other limp scenarios unchanged.
+
+### Files changed
+1. `src/lib/services/progress-storage.ts` — Eastern Time everywhere (3 spots fixed + new helper)
+2. `src/lib/data/range-tables.ts` — BTN 15bb widened; SB→BB catchall fixed in getFacingLimpAction
+3. `src/lib/services/play-scenario-generator.ts` — buildChoices + correctChoiceIndex handle SB→BB special case
+
+### Decisions made
+- BTN 15bb range was constructed manually (not regenerated from solver) since the solver output was consistently tighter than GTO target. Solver calibration at 15bb may need separate investigation.
+- SB→BB fix is belt-and-suspenders (both action layer AND choice layer). Either alone would work, but both together prevent the bug from recurring if one path is changed later.
+- "Check" chosen over "Limp behind" in BB-vs-SB-complete UX because BB has already completed the bet — the action is a check, not a limp.
+
+### Pending (cannot be done in-session)
+- **Supabase migration** — `supabase-flagged-hands.sql` still needs to be applied manually in the Supabase SQL editor. Without this, hand flagging is silently broken in production (flags go to localStorage only; admin dashboard shows no flags). This is a 5-minute fix for Chris: paste the SQL into https://supabase.com/dashboard/project/zsougvzcbnravctjqhoa/sql/new and run.
+
+### What's next
+- **Run the Supabase migration** (priority 1 — unblocks the shipped-but-broken hand flagging feature)
+- **Push all 3 local commits** to GitHub/Vercel
+- **Medium items from code review:**
+  - Empty raise ranges at 15bb+ in several spots (mostly intentional GTO — maybe not a real bug)
+  - Expand `validate-scenarios.mjs` exhaustive loop to iterate all range-table keys (not just 4 hardcoded pairs)
+  - Add `console.warn` telemetry when AKs/BTN/25bb fallback fires
+- **Low item:** Hardcoded `#1e293b` on card suits at play/page.tsx:35
+- **Then resume postflop work** — see POSTFLOP-DESIGN.md
+
+---
+
 ## Session: April 13, 2026 (Evening)
 **Focus:** Complete architectural rewrite of scenario generator to permanently kill the card/explanation mismatch bug
 **Note:** This session was worked in regular Claude chat (not cowork). Logged here on April 14 after git history review.
