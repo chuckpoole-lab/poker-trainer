@@ -1,19 +1,23 @@
 # Poker Trainer — Work Plan & Priorities
-## Updated April 5, 2026
+## Updated April 11, 2026
 
 ---
 
-## NEXT SESSION: Pick Up Here (April 6-7)
+## NEXT SESSION: Pick Up Here
 
-1. **Commit + push session timeout fix** — auth-context.tsx is ready, just needs `git commit` and `git push` to deploy via Vercel
-2. **Follow up with Chuck** — did he review the UX vision doc? Get sign-off on: color direction, 5-tab nav, two-path home screens
-3. **Start implementing warm color palette** — begin with CSS variables / design tokens swap (cream background, felt green, gold accents)
-4. **Build the 5-tab navigation** — replace current 8-tab layout, wire up path-dependent Home screen
-5. **If Chuck approves:** build the welcome screen fork ("How do you play poker?")
+1. **Run Supabase migration** — Paste `supabase-flagged-hands.sql` into Supabase SQL editor to enable the hand flagging feature
+2. **Test new modules on live site** — Verify facing-limp and facing-3bet scenarios appear in daily/bonus hands after Vercel rebuilds
+3. **BTN 15bb range fix** — Currently only 24% playable, should be ~35-40%. Update OPENING_RANGES_RAW BTN 15bb entry.
+4. **Review with Chuck** — Discuss UX direction from meeting, get sign-off on nav/color changes
+5. **Start implementing warm color palette** — CSS variables / design tokens swap (cream background, felt green, gold accents)
+6. **Build the 5-tab navigation** — replace current 8-tab layout, wire up path-dependent Home screen
 
-**Reminders:**
-- Attach `Poker-Trainer-UX-Vision-v2.html` to the Gmail draft to Chuck if not done yet (file is at: `C:\Users\rctha\Documents\poker-trainer\project-management\Poker-Trainer-UX-Vision-v2.html`)
-- Delete the stale "(no subject)" Gmail draft that contains raw HTML
+**Recent completions (April 7-11):**
+- ✅ Session timeout fix committed and deployed (auth-context.tsx)
+- ✅ Card/description mismatch bug fixed with 3-layer validation (42,250 tests pass)
+- ✅ Hand flagging feature built (play page + admin tab + Supabase schema — just needs migration)
+- ✅ Facing Limpers module (24 matchups × 4 stacks, 4 actions: isolate/limp/jam/fold)
+- ✅ 3-Betting Strategy module (36 matchups × 4 stacks, 3 actions: call/fold/4-bet jam)
 
 ---
 
