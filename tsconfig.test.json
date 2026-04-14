@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "baseUrl": ".",
+    "noEmit": false,
+    "outDir": ".test-build",
+    "isolatedModules": false
+  },
+  "include": [
+    "src/lib/**/*.ts",
+    "scripts/run-integration.ts"
+  ]
+}

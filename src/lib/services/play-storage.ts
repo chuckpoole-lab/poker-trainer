@@ -480,9 +480,22 @@ export interface FlaggedHandData {
   isBonus: boolean;
 }
 
-export interface FlaggedHand extends FlaggedHandData {
+export interface FlaggedHand {
   id: string;
   user_id: string | null;
+  hand_code: string;
+  position: string;
+  stack: string;
+  situation: string;
+  card1_rank: string;
+  card1_suit: string;
+  card2_rank: string;
+  card2_suit: string;
+  app_action: string;
+  user_action: string | null;
+  explanation: string;
+  note: string;
+  is_bonus: boolean;
   flagged_at: string;
   status: string;
   reviewer_note: string;

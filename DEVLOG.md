@@ -221,3 +221,37 @@ Decision: Build two experiences in one app.
 - Fix: Deterministic suit assignment derived from hand code hash (no shared RNG)
 - Added safety validation: card ranks force-checked against hand code after generation
 - Tested: 650 hands (150 daily + 500 bonus) with zero mismatches
+
+
+---
+
+## v0.9.2 — Scenario Generator Rewrite (April 13, 2026)
+
+**Bug:** Cards displayed did not match hand in coaching explanation (reported again by Chuck)
+- Example 1: Cards showed J♥T♣ but explanation said "with TT at 25bb"
+- Example 2: Cards showed 6♦4♣ but explanation said "66 at 20bb" (originally fixed in v0.9.1)
+- Root cause: The v0.9.1 fix patched symptoms without addressing the architectural problem.
+  The pipeline had THREE separate stages (spot-generator → play-scenario-generator → React render)
+  each capable of referencing a different hand. A GeneratedSpot object carried both a handCode
+  and a pre-built explanation from the generator; the re-derivation logic in play-scenario-generator
+  had to stay perfectly in sync with the generator's internal state to be correct. Any deviation
+  in the seeded RNG state or fallback code path could decouple them.
+
+**Fix: Complete architectural rewrite of play-scenario-generator.ts**
+
+New design principles:
+1. ONE function (buildScenario) derives ALL output fields from the SAME locked primitive
+   parameters: handCode (string), heroKey, stackBb, spotType, opponentKey.
+   Cards, action, explanation, choices — everything comes from this one call.
+2. No GeneratedSpot objects cross the boundary. The generator now picks only primitive
+   parameters (strings + numbers) using the RNG, then passes them directly into buildScenario.
+3. Per-hand RNG isolation: each of the 5 daily hands gets its own sub-seed derived from
+   the master seed XOR'd with the hand index. Picking parameters for hand 3 cannot
+   affect the RNG state used for hand 4.
+4. Post-generation validator (validateScenario) runs on every finished scenario.
+   It checks: card ranks match handCode, explanation text contains handCode, correct
+   index is in range. Any failure is logged and the scenario is skipped/replaced.
+5. Bonus hand fallback: if 20 attempts all fail validation, returns AKs/BTN/25bb as a
+   guaranteed-valid safe fallback.
+6. New handCodeToCards uses XOR-based seed from the hand code characters only —
+   no positional or RNG state can influence which suits are assigned.

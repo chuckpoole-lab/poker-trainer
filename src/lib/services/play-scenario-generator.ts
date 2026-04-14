@@ -1,12 +1,22 @@
 /**
- * Play mode scenario generator
- * Converts the spot generator output into Play mode hand scenarios.
- * Supports date-seeded daily challenges and unlimited bonus hands.
+ * Play mode scenario generator — v2 (complete rewrite, April 2026)
+ *
+ * Architecture principle: ALL output for a single hand (cards, action, explanation,
+ * choices) is generated inside ONE function from ONE locked set of primitive
+ * parameters.  No GeneratedSpot objects cross the boundary; only strings and numbers
+ * are passed in.  A final validation pass runs on every hand before it is returned
+ * to the caller so a corrupted scenario can never reach the user.
  */
 
-import { generateDrillSpot, type GeneratedSpot } from './spot-generator';
 import { Position, SimplifiedAction, SpotType, POSITION_LABELS } from '@/lib/types';
-import { ALL_HANDS, getOpeningAction, getFacingOpenAction, getFacingLimpAction, getFacing3BetAction, type HandCombo } from '@/lib/data/range-tables';
+import {
+  ALL_HANDS,
+  getOpeningAction,
+  getFacingOpenAction,
+  getFacingLimpAction,
+  getFacing3BetAction,
+  COMPILED_RANGES,
+} from '@/lib/data/range-tables';
 import {
   explainOpen,
   explainFoldUnopened,
@@ -23,7 +33,9 @@ import {
   explain4BetJam,
 } from '@/lib/data/explanation-templates';
 
-// ── Types ──
+// ─────────────────────────────────────────────
+//  Public output type
+// ─────────────────────────────────────────────
 
 export interface PlayHandScenario {
   id: string;
@@ -37,370 +49,319 @@ export interface PlayHandScenario {
   tipRight: string;
   tipWrong: string;
 }
-// ── Seeded random number generator (Mulberry32) ──
 
-function seededRng(seed: number) {
+// ─────────────────────────────────────────────
+//  Seeded RNG (Mulberry32)
+// ─────────────────────────────────────────────
+
+function seededRng(seed: number): () => number {
   return function () {
-    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
-    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
-    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
-    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    seed |= 0;
+    seed = (seed + 0x6D2B79F5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
 
-function dateToSeed(dateStr: string): number {
-  let hash = 0;
-  for (let i = 0; i < dateStr.length; i++) {
-    const chr = dateStr.charCodeAt(i);
-    hash = ((hash << 5) - hash) + chr;
-    hash |= 0;
+function dateToSeed(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) {
+    h = Math.imul(31, h) + s.charCodeAt(i) | 0;
   }
-  return Math.abs(hash);
+  return Math.abs(h);
 }
 
-// ── Card parsing ──
+// ─────────────────────────────────────────────
+//  Card display helpers
+// ─────────────────────────────────────────────
 
-const SUIT_CHOICES = ['h', 'd', 'c', 's'];
-function parseHandCode(handCode: string): Array<{ rank: string; suit: string }> {
-  const rank1 = handCode[0];
-  const rank2 = handCode.length >= 2 ? handCode[1] : rank1;
+const SUITS = ['h', 'd', 'c', 's'] as const;
+
+/**
+ * Deterministically derive two playing cards from a hand code.
+ * Derived entirely from the hand code characters — no external state.
+ */
+function handCodeToCards(handCode: string): Array<{ rank: string; suit: string }> {
+  const r1 = handCode[0];
+  const r2 = handCode.length >= 2 ? handCode[1] : r1;
   const isSuited = handCode.endsWith('s');
-  const isPair = rank1 === rank2 && !handCode.endsWith('s') && !handCode.endsWith('o');
+  const isPair = r1 === r2 && !isSuited && !handCode.endsWith('o');
 
-  // Deterministic suit assignment based on the hand code itself
-  // This ensures cards ALWAYS match the hand code regardless of any external state
-  const suitSeed = handCode.charCodeAt(0) * 31 + handCode.charCodeAt(1) * 7 + (handCode.length > 2 ? handCode.charCodeAt(2) : 0);
-
-  if (isPair) {
-    const s1Idx = suitSeed % 4;
-    let s2Idx = (suitSeed * 3 + 1) % 3;
-    if (s2Idx >= s1Idx) s2Idx++;
-    return [
-      { rank: rank1, suit: SUIT_CHOICES[s1Idx] },
-      { rank: rank1, suit: SUIT_CHOICES[s2Idx] },
-    ];
-  }
+  // Seed comes only from the hand-code characters
+  const seed =
+    (handCode.charCodeAt(0) * 7331) ^
+    (handCode.charCodeAt(1) * 1999) ^
+    (handCode.length > 2 ? handCode.charCodeAt(2) * 397 : 0);
 
   if (isSuited) {
-    const suitIdx = suitSeed % 4;
-    const suit = SUIT_CHOICES[suitIdx];
-    return [
-      { rank: rank1, suit },
-      { rank: rank2, suit },
-    ];
+    const suit = SUITS[Math.abs(seed) % 4];
+    return [{ rank: r1, suit }, { rank: r2, suit }];
   }
-  // Offsuit
-  const s1Idx = suitSeed % 4;
-  let s2Idx = (suitSeed * 3 + 1) % 3;
-  if (s2Idx >= s1Idx) s2Idx++;
+
+  // Offsuit or pair: two different suits
+  const s1 = Math.abs(seed) % 4;
+  const s2 = (Math.abs(seed >> 2) % 3 + s1 + 1) % 4;
   return [
-    { rank: rank1, suit: SUIT_CHOICES[s1Idx] },
-    { rank: rank2, suit: SUIT_CHOICES[s2Idx] },
+    { rank: r1, suit: SUITS[s1] },
+    { rank: r2, suit: SUITS[s2] },
   ];
 }
 
-// ── Situation text builders ──
+/**
+ * Verify that the cards we produced actually reflect the hand code.
+ * Returns true if everything is consistent.
+ */
+function cardsMatchHandCode(
+  cards: Array<{ rank: string; suit: string }>,
+  handCode: string,
+): boolean {
+  if (cards.length !== 2) return false;
+  const r1 = handCode[0];
+  const r2 = handCode.length >= 2 ? handCode[1] : r1;
+  const isSuited = handCode.endsWith('s');
+  const isPair = r1 === r2 && !isSuited && !handCode.endsWith('o');
 
-const POSITION_DISPLAY: Record<string, string> = {
+  if (cards[0].rank !== r1) return false;
+  if (cards[1].rank !== r2) return false;
+  if (isSuited && cards[0].suit !== cards[1].suit) return false;
+  if (!isPair && !isSuited && cards[0].suit === cards[1].suit) return false;
+  return true;
+}
+
+// ─────────────────────────────────────────────
+//  Position display maps
+// ─────────────────────────────────────────────
+
+const POS_DISPLAY: Record<string, string> = {
   utg: 'Under the Gun', hj: 'Hijack', co: 'Cutoff',
   btn: 'Button', sb: 'Small Blind', bb: 'Big Blind',
   utg1: 'UTG+1', mp: 'Middle Position', lj: 'Lojack',
 };
 
-function buildSituation(spot: GeneratedSpot): string {
-  const { template } = spot;
-  const pos = POSITION_DISPLAY[template.position] || POSITION_LABELS[template.position as Position];
+const POS_MAP: Record<string, Position> = {
+  utg: Position.UTG, utg1: Position.UTG1, mp: Position.MP,
+  lj: Position.LJ, hj: Position.HJ, co: Position.CO,
+  btn: Position.BTN, sb: Position.SB, bb: Position.BB,
+};
 
-  // Facing a limp scenario
-  if (template.spotType === SpotType.FACING_LIMP) {
-    const history = template.actionHistory;
-    const limperMatch = history.match(/^(\w+)_limps/);
-    const limperKey = limperMatch ? limperMatch[1] : 'unknown';
-    const limperName = POSITION_DISPLAY[limperKey] || limperKey.toUpperCase();
-    const heroPos = template.position;
-    const seatOrder = ['utg', 'utg1', 'mp', 'lj', 'hj', 'co', 'btn', 'sb', 'bb'];
-    const limperIdx = seatOrder.indexOf(limperKey);
-    const heroIdx = seatOrder.indexOf(heroPos);
-    const gap = heroIdx - limperIdx;
+const SEAT_ORDER = ['utg', 'utg1', 'mp', 'lj', 'hj', 'co', 'btn', 'sb', 'bb'];
 
-    if (limperKey === 'sb' && heroPos === 'bb') {
-      return `The Small Blind completes. You check or raise from the Big Blind.`;
-    } else if (gap === 1) {
-      return `The ${limperName} limps in.`;
-    } else if (gap === 2) {
-      return `The ${limperName} limps in. The player between you folds.`;
-    } else if (gap > 2) {
-      return `The ${limperName} limps in. Everyone between you folds.`;
-    } else {
-      return `The ${limperName} limps in. Everyone else folds.`;
-    }
-  }
-
-  // Facing a 3-bet scenario
-  if (template.spotType === SpotType.FACING_3BET) {
-    const history = template.actionHistory;
-    // Format: hero_opens_heroPos_3bettorPos_3bets
-    const match3Bet = history.match(/hero_opens_(\w+)_(\w+)_3bets/);
-    const threeBettorKey = match3Bet ? match3Bet[2] : 'unknown';
-    const threeBettorName = POSITION_DISPLAY[threeBettorKey] || threeBettorKey.toUpperCase();
-    return `You raised to 2.5x. The ${threeBettorName} goes all-in.`;
-  }
-
-  if (template.spotType === SpotType.FACING_OPEN) {
-    const history = template.actionHistory;
-    const openerMatch = history.match(/^(\w+)_opens/);
-    const openerKey = openerMatch ? openerMatch[1] : 'unknown';
-    const openerName = POSITION_DISPLAY[openerKey] || openerKey.toUpperCase();
-    const heroPos = template.position;
-    const seatOrder = ['utg', 'utg1', 'mp', 'lj', 'hj', 'co', 'btn', 'sb', 'bb'];
-    const openerIdx = seatOrder.indexOf(openerKey);
-    const heroIdx = seatOrder.indexOf(heroPos);
-    const gap = heroIdx - openerIdx;
-
-    if (gap === 1) {
-      return `The ${openerName} raises to 2.5x.`;
-    } else if (gap === 2) {
-      return `The ${openerName} raises to 2.5x. The player between you folds.`;
-    } else if (gap > 2) {
-      return `The ${openerName} raises to 2.5x. Everyone between you folds.`;
-    } else {
-      return `The ${openerName} raises to 2.5x. Everyone else folds.`;
-    }
-  }
-
-  if (template.position === Position.SB) {
-    return 'Everyone folds to you. Only the big blind remains.';
-  }
-
-  const situationMap: Record<string, string> = {
-    utg: "You're first to act. Full table, 8-9 players behind you.",
-    utg1: "UTG folds. You're next to act with 7-8 players behind you.",
-    mp: "The early positions fold. You have 6-7 players behind you.",
-    lj: "The early positions fold to you. 5-6 players behind you.",
-    hj: "It folds to you. 4-5 players behind you.",
-    co: "Everyone folds to you. 3 players behind you.",
-    btn: "Everyone folds to you. Only the blinds to get through.",
-  };
-  return situationMap[template.position] || 'Everyone folds to you.';
+function posLabel(key: string): string {
+  return POS_DISPLAY[key] ?? POSITION_LABELS[POS_MAP[key] as Position] ?? key.toUpperCase();
 }
-// ── Choice and tip builders ──
 
-function buildChoices(correctAction: SimplifiedAction, spotType: SpotType, stackBb: number): string[] {
-  if (spotType === SpotType.FACING_3BET) {
+// ─────────────────────────────────────────────
+//  Situation text builders
+// ─────────────────────────────────────────────
+
+const UNOPENED_SITUATION: Record<string, string> = {
+  utg: "You're first to act. Full table, 8-9 players behind you.",
+  utg1: 'UTG folds. You\'re next to act with 7-8 players behind you.',
+  mp: 'The early positions fold. You have 6-7 players behind you.',
+  lj: 'The early positions fold to you. 5-6 players behind you.',
+  hj: 'It folds to you. 4-5 players behind you.',
+  co: 'Everyone folds to you. 3 players behind you.',
+  btn: 'Everyone folds to you. Only the blinds to get through.',
+  sb: 'Everyone folds to you. Only the big blind remains.',
+};
+
+function buildSituation(
+  spotType: string,
+  heroKey: string,
+  opponentKey: string,
+): string {
+  if (spotType === 'unopened') {
+    return UNOPENED_SITUATION[heroKey] ?? 'Everyone folds to you.';
+  }
+
+  if (spotType === 'facing_open') {
+    const heroIdx = SEAT_ORDER.indexOf(heroKey);
+    const openIdx = SEAT_ORDER.indexOf(opponentKey);
+    const gap = heroIdx - openIdx;
+    const oName = posLabel(opponentKey);
+    if (gap <= 1) return `The ${oName} raises to 2.5x.`;
+    if (gap === 2) return `The ${oName} raises to 2.5x. The player between you folds.`;
+    return `The ${oName} raises to 2.5x. Everyone between you folds.`;
+  }
+
+  if (spotType === 'facing_limp') {
+    if (opponentKey === 'sb' && heroKey === 'bb') {
+      return 'The Small Blind completes. You check or raise from the Big Blind.';
+    }
+    const heroIdx = SEAT_ORDER.indexOf(heroKey);
+    const limpIdx = SEAT_ORDER.indexOf(opponentKey);
+    const gap = heroIdx - limpIdx;
+    const oName = posLabel(opponentKey);
+    if (gap <= 1) return `The ${oName} limps in.`;
+    if (gap === 2) return `The ${oName} limps in. The player between you folds.`;
+    return `The ${oName} limps in. Everyone between you folds.`;
+  }
+
+  if (spotType === 'facing_3bet') {
+    return `You raised to 2.5x. The ${posLabel(opponentKey)} goes all-in.`;
+  }
+
+  return 'Everyone folds to you.';
+}
+
+// ─────────────────────────────────────────────
+//  Choices and correct-index builder
+// ─────────────────────────────────────────────
+
+function buildChoices(spotType: string): string[] {
+  if (spotType === 'facing_3bet' || spotType === 'facing_open') {
     return ['Fold', 'Call', 'All-in'];
   }
-  if (spotType === SpotType.FACING_OPEN) {
-    return ['Fold', 'Call', 'All-in'];
-  }
-  if (spotType === SpotType.FACING_LIMP) {
+  if (spotType === 'facing_limp') {
     return ['Fold', 'Limp behind', 'Raise', 'All-in'];
   }
   return ['Fold', 'Raise', 'All-in'];
 }
 
-function getCorrectIndex(correctAction: SimplifiedAction, choices: string[]): number {
-  const actionToChoice: Record<string, string[]> = {
+function correctChoiceIndex(action: SimplifiedAction, choices: string[]): number {
+  const map: Record<string, string[]> = {
     fold: ['Fold'],
     open: ['Raise to 2.5x', 'Raise'],
     call: ['Call'],
-    jam: ['Shove all-in', 'All-in'],
+    jam: ['All-in', 'Shove all-in'],
     limp: ['Limp behind', 'Limp', 'Call'],
   };
-  const matches = actionToChoice[correctAction] || [];
-  for (const m of matches) {
-    const idx = choices.findIndex(c => c.includes(m));
+  for (const label of (map[action] ?? [])) {
+    const idx = choices.findIndex(c => c.includes(label));
     if (idx >= 0) return idx;
   }
   return 0;
 }
 
-const ACTION_DISPLAY: Record<string, string> = {
+const ACTION_LABEL: Record<string, string> = {
   fold: 'Fold', open: 'Raise', call: 'Call', jam: 'All-in', limp: 'Limp behind',
 };
-// ── Validate that cards match handCode ──
-// This is the final safety net — if cards and handCode are ever out of sync,
-// this catches it before the user sees a mismatch.
-function validateCardsMatchHandCode(
-  cards: Array<{ rank: string; suit: string }>,
-  handCode: string
-): boolean {
-  if (cards.length !== 2) return false;
-  const rank1 = handCode[0];
-  const rank2 = handCode.length >= 2 ? handCode[1] : rank1;
-  const isSuited = handCode.endsWith('s');
 
-  // Ranks must match
-  if (cards[0].rank !== rank1 || cards[1].rank !== rank2) return false;
+// ─────────────────────────────────────────────
+//  The one and only scenario builder
+//  ALL fields are derived from the same locked parameters.
+// ─────────────────────────────────────────────
 
-  // Suited hands must have same suit, offsuit/pairs must have different suits
-  if (isSuited && cards[0].suit !== cards[1].suit) return false;
-  if (!isSuited && rank1 !== rank2 && cards[0].suit === cards[1].suit) return false;
+function buildScenario(
+  id: string,
+  handCode: string,
+  heroKey: string,
+  stackBb: number,
+  spotType: string,
+  opponentKey: string, // opener / limper / threeBettor key (or '' for unopened)
+): PlayHandScenario {
+  // ── 1. Cards — derived only from handCode ──
+  const cards = handCodeToCards(handCode);
 
-  return true;
-}
-
-// ── Convert a generated spot into a PlayHandScenario ──
-// CRITICAL: This function is the single source of truth for what the user sees.
-// Cards, correct action, and explanation are ALL derived from the same handCode.
-// A final validation step ensures nothing is out of sync before returning.
-
-function spotToPlayScenario(generated: GeneratedSpot, _rng: () => number): PlayHandScenario {
-  const { spot, template } = generated;
-  const pos = POSITION_DISPLAY[template.position] || POSITION_LABELS[template.position as Position];
-  const handCode = spot.handCode;
-
-  // Step 1: Generate cards directly from handCode (deterministic, no RNG dependency)
-  const cards = parseHandCode(handCode);
-
-  // SAFETY CHECK: Validate cards match handCode before proceeding
-  if (!validateCardsMatchHandCode(cards, handCode)) {
-    console.error(`[PokerTrainer] CRITICAL: parseHandCode produced cards that don't match handCode "${handCode}". Cards: ${JSON.stringify(cards)}. Regenerating.`);
-    // Force-rebuild cards from handCode characters as absolute fallback
-    const rank1 = handCode[0];
-    const rank2 = handCode.length >= 2 ? handCode[1] : rank1;
+  // Hard check: cards must match handCode
+  if (!cardsMatchHandCode(cards, handCode)) {
+    console.error(`[PokerTrainer] Card mismatch for handCode="${handCode}". Cards:`, cards);
+    // Force-rebuild as last resort
+    const r1 = handCode[0];
+    const r2 = handCode.length >= 2 ? handCode[1] : r1;
     const isSuited = handCode.endsWith('s');
-    cards[0] = { rank: rank1, suit: 'h' };
-    cards[1] = { rank: rank2, suit: isSuited ? 'h' : 'd' };
+    cards[0] = { rank: r1, suit: 'h' };
+    cards[1] = { rank: r2, suit: isSuited ? 'h' : 'd' };
   }
 
-  // Step 2: Re-derive the correct action from range-tables using handCode
-  // Range-tables are the authoritative source of truth
-  let verifiedAction: SimplifiedAction;
-  const isFacingOpen = template.spotType === SpotType.FACING_OPEN;
-  const isFacingLimp = template.spotType === SpotType.FACING_LIMP;
-  const isFacing3Bet = template.spotType === SpotType.FACING_3BET;
-  const posMap: Record<string, Position> = {
-    utg: Position.UTG, utg1: Position.UTG1, mp: Position.MP,
-    lj: Position.LJ, hj: Position.HJ, co: Position.CO,
-    btn: Position.BTN, sb: Position.SB, bb: Position.BB,
-  };
+  // ── 2. Correct action — always re-derived from range tables ──
+  const heroPos = POS_MAP[heroKey];
+  const opponentPos = opponentKey ? POS_MAP[opponentKey] : undefined;
 
-  let openerPos: Position | undefined;
-  let limperPos: Position | undefined;
-  let threeBettorPos: Position | undefined;
-
-  if (isFacingLimp) {
-    const actionHistory = template.actionHistory || '';
-    const limperMatch = actionHistory.match(/^(\w+)_limps/);
-    limperPos = limperMatch ? posMap[limperMatch[1]] : undefined;
-    if (limperPos) {
-      verifiedAction = getFacingLimpAction(limperPos, template.position as Position, template.stackDepthBb, handCode);
-    } else {
-      verifiedAction = spot.simplifiedAction;
-    }
-  } else if (isFacing3Bet) {
-    const actionHistory = template.actionHistory || '';
-    const match3Bet = actionHistory.match(/hero_opens_(\w+)_(\w+)_3bets/);
-    threeBettorPos = match3Bet ? posMap[match3Bet[2]] : undefined;
-    if (threeBettorPos) {
-      verifiedAction = getFacing3BetAction(template.position as Position, threeBettorPos, template.stackDepthBb, handCode);
-    } else {
-      verifiedAction = spot.simplifiedAction;
-    }
-  } else if (isFacingOpen) {
-    const actionHistory = template.actionHistory || '';
-    const openerMatch = actionHistory.match(/^(\w+)_opens/);
-    openerPos = openerMatch ? posMap[openerMatch[1]] : undefined;
-    if (openerPos) {
-      verifiedAction = getFacingOpenAction(openerPos, template.position as Position, template.stackDepthBb, handCode);
-    } else {
-      verifiedAction = spot.simplifiedAction;
-    }
+  let action: SimplifiedAction;
+  if (spotType === 'facing_open' && opponentPos) {
+    action = getFacingOpenAction(opponentPos, heroPos, stackBb, handCode);
+  } else if (spotType === 'facing_limp' && opponentPos) {
+    action = getFacingLimpAction(opponentPos, heroPos, stackBb, handCode);
+  } else if (spotType === 'facing_3bet' && opponentPos) {
+    action = getFacing3BetAction(heroPos, opponentPos, stackBb, handCode);
   } else {
-    verifiedAction = getOpeningAction(template.position as Position, template.stackDepthBb, handCode);
+    action = getOpeningAction(heroPos, stackBb, handCode);
   }
 
-  // Log if the verified action differs from what the spot generator produced
-  if (verifiedAction !== spot.simplifiedAction) {
-    console.warn(`[PokerTrainer] Action mismatch: spot=${spot.simplifiedAction} vs range-tables=${verifiedAction} for ${handCode} at ${template.position} ${template.stackDepthBb}bb. Using range-tables.`);
-  }
+  // ── 3. Explanation — derived only from handCode + action ──
+  //    We pass handCode (not any cached value) into every template call.
+  let explanation: { plain: string };
 
-  // Step 3: Generate FRESH explanation ALWAYS from handCode + verifiedAction
-  // NEVER use spot.explanation — it is generated at a different time and could
-  // reference a different hand. All text the user sees MUST come from handCode.
-  let freshExplanation: { plain: string };
-
-  if (isFacingLimp && limperPos) {
-    freshExplanation = verifiedAction === SimplifiedAction.OPEN
-      ? explainIsolateLimper(handCode, template.position as Position, limperPos, template.stackDepthBb)
-      : verifiedAction === SimplifiedAction.LIMP
-        ? explainLimpBehind(handCode, template.position as Position, limperPos, template.stackDepthBb)
-        : verifiedAction === SimplifiedAction.JAM
-          ? explainJamVsLimp(handCode, template.position as Position, limperPos, template.stackDepthBb)
-          : explainFoldVsLimp(handCode, template.position as Position, limperPos, template.stackDepthBb);
-  } else if (isFacingLimp && !limperPos) {
-    freshExplanation = verifiedAction === SimplifiedAction.OPEN
-      ? { plain: `With ${handCode} at ${template.stackDepthBb}bb, raising to isolate the limper is the best play. Limpers are weak — punish them.` }
-      : verifiedAction === SimplifiedAction.LIMP
-        ? { plain: `With ${handCode} at ${template.stackDepthBb}bb, limping behind is the best play. This hand has speculative value.` }
-        : verifiedAction === SimplifiedAction.JAM
-          ? { plain: `With ${handCode} at ${template.stackDepthBb}bb, going all-in over the limper is the best play. Maximum fold equity against a weak range.` }
-          : { plain: `With ${handCode} at ${template.stackDepthBb}bb, folding is the disciplined play. This hand is too weak even against a limper.` };
-  } else if (isFacing3Bet && threeBettorPos) {
-    freshExplanation = verifiedAction === SimplifiedAction.JAM
-      ? explain4BetJam(handCode, template.position as Position, threeBettorPos, template.stackDepthBb)
-      : verifiedAction === SimplifiedAction.CALL
-        ? explainCallVs3Bet(handCode, template.position as Position, threeBettorPos, template.stackDepthBb)
-        : explainFoldVs3Bet(handCode, template.position as Position, threeBettorPos, template.stackDepthBb);
-  } else if (isFacing3Bet && !threeBettorPos) {
-    freshExplanation = verifiedAction === SimplifiedAction.JAM
-      ? { plain: `With ${handCode} at ${template.stackDepthBb}bb, 4-bet jamming is the best play. This premium hand dominates the 3-bettor's range.` }
-      : verifiedAction === SimplifiedAction.CALL
-        ? { plain: `With ${handCode} at ${template.stackDepthBb}bb, calling the 3-bet is correct. Your hand is strong enough to continue.` }
-        : { plain: `With ${handCode} at ${template.stackDepthBb}bb, folding to the 3-bet is the disciplined play. Most of your opening range should fold here.` };
-  } else if (isFacingOpen && openerPos) {
-    freshExplanation = verifiedAction === SimplifiedAction.JAM
-      ? explainJamVsOpen(handCode, template.position as Position, openerPos, template.stackDepthBb)
-      : verifiedAction === SimplifiedAction.CALL
-        ? explainCallVsOpen(handCode, template.position as Position, openerPos, template.stackDepthBb)
-        : explainFoldVsOpen(handCode, template.position as Position, openerPos, template.stackDepthBb);
-  } else if (isFacingOpen && !openerPos) {
-    freshExplanation = verifiedAction === SimplifiedAction.JAM
-      ? { plain: `With ${handCode} at ${template.stackDepthBb}bb, going all-in is the best play. This hand is strong enough against the raiser's range to commit your stack.` }
-      : verifiedAction === SimplifiedAction.CALL
-        ? { plain: `With ${handCode} at ${template.stackDepthBb}bb, calling is the right play. The hand has good playability and implied odds against the raiser.` }
-        : { plain: `With ${handCode} at ${template.stackDepthBb}bb, folding is the disciplined play. This hand is too weak against the raiser's range to continue profitably.` };
+  if (spotType === 'facing_open' && opponentPos) {
+    explanation =
+      action === SimplifiedAction.JAM
+        ? explainJamVsOpen(handCode, heroPos, opponentPos, stackBb)
+        : action === SimplifiedAction.CALL
+          ? explainCallVsOpen(handCode, heroPos, opponentPos, stackBb)
+          : explainFoldVsOpen(handCode, heroPos, opponentPos, stackBb);
+  } else if (spotType === 'facing_limp' && opponentPos) {
+    explanation =
+      action === SimplifiedAction.OPEN
+        ? explainIsolateLimper(handCode, heroPos, opponentPos, stackBb)
+        : action === SimplifiedAction.LIMP
+          ? explainLimpBehind(handCode, heroPos, opponentPos, stackBb)
+          : action === SimplifiedAction.JAM
+            ? explainJamVsLimp(handCode, heroPos, opponentPos, stackBb)
+            : explainFoldVsLimp(handCode, heroPos, opponentPos, stackBb);
+  } else if (spotType === 'facing_3bet' && opponentPos) {
+    explanation =
+      action === SimplifiedAction.JAM
+        ? explain4BetJam(handCode, heroPos, opponentPos, stackBb)
+        : action === SimplifiedAction.CALL
+          ? explainCallVs3Bet(handCode, heroPos, opponentPos, stackBb)
+          : explainFoldVs3Bet(handCode, heroPos, opponentPos, stackBb);
   } else {
-    freshExplanation = verifiedAction === SimplifiedAction.OPEN
-      ? explainOpen(handCode, template.position as Position, template.stackDepthBb)
-      : verifiedAction === SimplifiedAction.JAM
-        ? explainJamUnopened(handCode, template.position as Position, template.stackDepthBb)
-        : explainFoldUnopened(handCode, template.position as Position, template.stackDepthBb);
+    explanation =
+      action === SimplifiedAction.OPEN
+        ? explainOpen(handCode, heroPos, stackBb)
+        : action === SimplifiedAction.JAM
+          ? explainJamUnopened(handCode, heroPos, stackBb)
+          : explainFoldUnopened(handCode, heroPos, stackBb);
   }
 
-  const situation = buildSituation(generated);
-  const choices = buildChoices(verifiedAction, template.spotType as SpotType, template.stackDepthBb);
-  const correct = getCorrectIndex(verifiedAction, choices);
+  // ── 4. Situation text ──
+  const situation = buildSituation(spotType, heroKey, opponentKey);
 
-  // Build tips from freshExplanation (guaranteed to reference handCode)
-  const actionLabel = ACTION_DISPLAY[verifiedAction] || verifiedAction;
-  const tipRight = freshExplanation.plain;
-  const tipWrong = `The correct play is ${actionLabel}. ${freshExplanation.plain}`;
+  // ── 5. Choices + correct index ──
+  const choices = buildChoices(spotType);
+  const correct = correctChoiceIndex(action, choices);
+  const actionLabel = ACTION_LABEL[action] ?? action;
 
-  // FINAL SAFETY: Verify the explanation actually contains the handCode
-  // This catches any edge case where explanation text references a different hand
-  if (!tipRight.includes(handCode)) {
-    console.error(`[PokerTrainer] CRITICAL: Explanation does not contain handCode "${handCode}". Tip: "${tipRight.substring(0, 80)}...". Forcing correction.`);
-    const correctedTip = `With ${handCode} at ${template.stackDepthBb}bb from ${pos}, the correct play is ${actionLabel.toLowerCase()}.`;
+  const tipRight = explanation.plain;
+  const tipWrong = `The correct play is ${actionLabel}. ${explanation.plain}`;
+
+  // ── 6. Final integrity check ──
+  //    Verify that BOTH cards AND explanation reference the same hand.
+  const rankOk = cards[0].rank === handCode[0] &&
+    cards[1].rank === (handCode[1] ?? handCode[0]);
+
+  const explanationContainsHand = tipRight.includes(handCode);
+
+  if (!rankOk || !explanationContainsHand) {
+    console.error(
+      `[PokerTrainer] INTEGRITY FAILURE for handCode="${handCode}". ` +
+      `rankOk=${rankOk}, explanationContainsHand=${explanationContainsHand}. ` +
+      `tipRight="${tipRight.slice(0, 80)}"`
+    );
+    // Replace with a guaranteed-safe minimal explanation
+    const safeExplanation =
+      `With ${handCode} at ${stackBb}bb from ${posLabel(heroKey)}, the correct play is ${actionLabel.toLowerCase()}.`;
     return {
-      id: spot.id,
+      id,
       handCode,
-      position: pos,
-      stack: `${template.stackDepthBb} blinds`,
+      position: posLabel(heroKey),
+      stack: `${stackBb} blinds`,
       situation,
       cards,
       choices,
       correct,
-      tipRight: correctedTip,
-      tipWrong: `The correct play is ${actionLabel}. ${correctedTip}`,
+      tipRight: safeExplanation,
+      tipWrong: `The correct play is ${actionLabel}. ${safeExplanation}`,
     };
   }
 
   return {
-    id: spot.id,
+    id,
     handCode,
-    position: pos,
-    stack: `${template.stackDepthBb} blinds`,
+    position: posLabel(heroKey),
+    stack: `${stackBb} blinds`,
     situation,
     cards,
     choices,
@@ -409,56 +370,200 @@ function spotToPlayScenario(generated: GeneratedSpot, _rng: () => number): PlayH
     tipWrong,
   };
 }
-// ── Public API ──
+
+// ─────────────────────────────────────────────
+//  Scenario parameter pickers
+//  (pure RNG → primitive parameters only)
+// ─────────────────────────────────────────────
+
+const OPENING_POSITIONS = ['utg', 'hj', 'co', 'btn', 'sb'];
+const STACK_DEPTHS = [10, 15, 20, 25, 30];
+const FACING_OPEN_KEYS = Array.from(COMPILED_RANGES.facingOpen.keys());
+const FACING_LIMP_KEYS = Array.from(COMPILED_RANGES.facingLimp.keys());
+const FACING_3BET_KEYS = Array.from(COMPILED_RANGES.facing3Bet.keys());
+
+function pickRng<T>(arr: T[], rng: () => number): T {
+  return arr[Math.floor(rng() * arr.length)];
+}
+
+/** Pick a hand biased toward interesting (borderline) decisions. */
+function pickHand(
+  rng: () => number,
+  spotType: string,
+  heroKey: string,
+  stackBb: number,
+  opponentKey: string,
+): string {
+  const heroPos = POS_MAP[heroKey];
+  const opponentPos = opponentKey ? POS_MAP[opponentKey] : undefined;
+
+  function getAction(code: string): SimplifiedAction {
+    if (spotType === 'facing_open' && opponentPos)
+      return getFacingOpenAction(opponentPos, heroPos, stackBb, code);
+    if (spotType === 'facing_limp' && opponentPos)
+      return getFacingLimpAction(opponentPos, heroPos, stackBb, code);
+    if (spotType === 'facing_3bet' && opponentPos)
+      return getFacing3BetAction(heroPos, opponentPos, stackBb, code);
+    return getOpeningAction(heroPos, stackBb, code);
+  }
+
+  if (rng() < 0.6) {
+    const borderline = ALL_HANDS.filter(h => {
+      const a = getAction(h.code);
+      const strength = h.isPair
+        ? 200 + (h.rank1 === h.rank2 ? 1 : 0)
+        : h.suited ? 30 : 0;
+      return (a !== SimplifiedAction.FOLD && strength < 250) ||
+        (a === SimplifiedAction.FOLD && strength > 120 && strength < 200);
+    });
+    if (borderline.length > 0) return pickRng(borderline, rng).code;
+  }
+  return pickRng(ALL_HANDS, rng).code;
+}
+
+/** Generate a single raw scenario, returning only primitives. */
+function pickScenarioParams(rng: () => number): {
+  spotType: string;
+  heroKey: string;
+  stackBb: number;
+  opponentKey: string;
+} {
+  const roll = rng();
+
+  if (roll < 0.35) {
+    // facing_open
+    const key = pickRng(FACING_OPEN_KEYS, rng);
+    const parts = key.split('_');
+    if (parts.length !== 3) return pickScenarioParams(rng); // retry
+    return { spotType: 'facing_open', heroKey: parts[1], stackBb: parseInt(parts[2]), opponentKey: parts[0] };
+  }
+
+  if (roll < 0.50) {
+    // facing_limp
+    const key = pickRng(FACING_LIMP_KEYS, rng);
+    const parts = key.split('_');
+    if (parts.length !== 3) return pickScenarioParams(rng);
+    return { spotType: 'facing_limp', heroKey: parts[1], stackBb: parseInt(parts[2]), opponentKey: parts[0] };
+  }
+
+  if (roll < 0.60) {
+    // facing_3bet
+    const key = pickRng(FACING_3BET_KEYS, rng);
+    const parts = key.split('_');
+    if (parts.length !== 3) return pickScenarioParams(rng);
+    return { spotType: 'facing_3bet', heroKey: parts[0], stackBb: parseInt(parts[2]), opponentKey: parts[1] };
+  }
+
+  // unopened
+  return {
+    spotType: 'unopened',
+    heroKey: pickRng(OPENING_POSITIONS, rng),
+    stackBb: pickRng(STACK_DEPTHS, rng),
+    opponentKey: '',
+  };
+}
+
+// ─────────────────────────────────────────────
+//  Post-generation validator
+//  Runs on every finished PlayHandScenario.
+//  Returns true if the scenario is safe to show.
+// ─────────────────────────────────────────────
+
+function validateScenario(s: PlayHandScenario): boolean {
+  if (!s.handCode || s.cards.length !== 2) return false;
+
+  // Cards must match hand code
+  const r1 = s.handCode[0];
+  const r2 = s.handCode.length >= 2 ? s.handCode[1] : r1;
+  if (s.cards[0].rank !== r1 || s.cards[1].rank !== r2) {
+    console.error(`[PokerTrainer] VALIDATE FAIL: cards ${s.cards[0].rank}${s.cards[1].rank} don't match handCode ${s.handCode}`);
+    return false;
+  }
+
+  // Explanation must reference the hand code
+  if (!s.tipRight.includes(s.handCode) || !s.tipWrong.includes(s.handCode)) {
+    console.error(`[PokerTrainer] VALIDATE FAIL: explanation missing handCode "${s.handCode}". tipRight="${s.tipRight.slice(0, 80)}"`);
+    return false;
+  }
+
+  // Correct index must be in range
+  if (s.correct < 0 || s.correct >= s.choices.length) {
+    console.error(`[PokerTrainer] VALIDATE FAIL: correct index ${s.correct} out of range for choices`, s.choices);
+    return false;
+  }
+
+  return true;
+}
+
+// ─────────────────────────────────────────────
+//  Public API
+// ─────────────────────────────────────────────
 
 /**
- * Generate the daily 5 hands — deterministic based on date.
- * Everyone gets the same hands on the same day.
+ * Generate 5 daily hands — deterministic for all users on the same date.
  */
 export function generateDailyHands(dateStr?: string): PlayHandScenario[] {
-  const today = dateStr || new Date().toISOString().split('T')[0];
-  const seed = dateToSeed(today + '_pokertrain_daily');
-  const rng = seededRng(seed);
+  const today = dateStr ?? new Date().toISOString().split('T')[0];
+  const masterSeed = dateToSeed(today + '_pokertrain_v2');
+  const rng = seededRng(masterSeed);
 
   const hands: PlayHandScenario[] = [];
   const usedKeys = new Set<string>();
   let attempts = 0;
 
-  while (hands.length < 5 && attempts < 50) {
+  while (hands.length < 5 && attempts < 100) {
     attempts++;
 
-    const scenarioSeed = seed + hands.length * 7919 + attempts * 31;
-    const scenarioRng = seededRng(scenarioSeed);
+    // Each hand gets its own sub-seed so picking a scenario doesn't bleed into the next
+    const handRng = seededRng(masterSeed ^ (attempts * 0x9e3779b9));
 
-    // Override Math.random temporarily for the generator
-    // Use try/finally to guarantee restoration even if generateDrillSpot throws
-    const originalRandom = Math.random;
-    let generated: GeneratedSpot;
-    try {
-      Math.random = scenarioRng;
-      generated = generateDrillSpot();
-    } finally {
-      Math.random = originalRandom;
+    const params = pickScenarioParams(handRng);
+    const handCode = pickHand(handRng, params.spotType, params.heroKey, params.stackBb, params.opponentKey);
+    const dedupeKey = `${handCode}_${params.heroKey}_${params.spotType}`;
+
+    if (usedKeys.has(dedupeKey)) continue;
+
+    const id = `daily_${today}_${attempts}`;
+    const scenario = buildScenario(id, handCode, params.heroKey, params.stackBb, params.spotType, params.opponentKey);
+
+    if (!validateScenario(scenario)) {
+      console.error(`[PokerTrainer] Daily hand ${attempts} failed validation, skipping.`);
+      continue;
     }
-    // Avoid duplicates
-    const key = `${generated.spot.handCode}_${generated.template.position}`;
-    if (usedKeys.has(key)) continue;
-    usedKeys.add(key);
 
-    hands.push(spotToPlayScenario(generated, rng));
+    usedKeys.add(dedupeKey);
+    hands.push(scenario);
+  }
+
+  if (hands.length < 5) {
+    console.error(`[PokerTrainer] Could only generate ${hands.length}/5 valid daily hands after ${attempts} attempts.`);
   }
 
   return hands;
 }
 
 /**
- * Generate a single random bonus hand for "Keep Playing" mode.
- * Not date-seeded — each is unique.
+ * Generate a single random bonus hand.
  */
 export function generateBonusHand(): PlayHandScenario {
   const rng = () => Math.random();
-  const generated = generateDrillSpot();
-  return spotToPlayScenario(generated, rng);
+  let attempts = 0;
+
+  while (attempts < 20) {
+    attempts++;
+    const handRng = seededRng(Math.floor(Math.random() * 0xffffffff));
+    const params = pickScenarioParams(handRng);
+    const handCode = pickHand(handRng, params.spotType, params.heroKey, params.stackBb, params.opponentKey);
+    const id = `bonus_${Date.now()}_${attempts}`;
+    const scenario = buildScenario(id, handCode, params.heroKey, params.stackBb, params.spotType, params.opponentKey);
+
+    if (validateScenario(scenario)) return scenario;
+    console.error(`[PokerTrainer] Bonus hand attempt ${attempts} failed validation, retrying.`);
+  }
+
+  // Absolute fallback — guaranteed valid
+  const fallback = buildScenario('bonus_fallback', 'AKs', 'btn', 25, 'unopened', '');
+  return fallback;
 }
 
 /**
@@ -468,14 +573,14 @@ export function generateBonusHands(count: number): PlayHandScenario[] {
   const hands: PlayHandScenario[] = [];
   const usedKeys = new Set<string>();
   let attempts = 0;
-  while (hands.length < count && attempts < count * 5) {
+
+  while (hands.length < count && attempts < count * 10) {
     attempts++;
-    const rng = () => Math.random();
-    const generated = generateDrillSpot();
-    const key = `${generated.spot.handCode}_${generated.template.position}`;
+    const scenario = generateBonusHand();
+    const key = `${scenario.handCode}_${scenario.position}`;
     if (usedKeys.has(key)) continue;
     usedKeys.add(key);
-    hands.push(spotToPlayScenario(generated, rng));
+    hands.push(scenario);
   }
 
   return hands;

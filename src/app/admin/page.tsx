@@ -601,9 +601,9 @@ export default function AdminDashboard() {
                         <span style={{ fontSize: 18, fontWeight: 800, fontFamily: 'var(--font-display)', color: 'var(--on-surface)' }}>
                           {flag.card1_rank}{SUIT_SYM[flag.card1_suit] || ''} {flag.card2_rank}{SUIT_SYM[flag.card2_suit] || ''}
                         </span>
-                        <Badge variant="outlined" style={{ fontSize: 11 }}>{flag.hand_code}</Badge>
+                        <Badge variant="neutral" style={{ fontSize: 11 }}>{flag.hand_code}</Badge>
                       </div>
-                      <Badge variant="filled" style={{
+                      <Badge variant="neutral" style={{
                         fontSize: 10, background: statusColors[flag.status] || '#94a3b8', color: '#fff',
                       }}>{flag.status}</Badge>
                     </div>
