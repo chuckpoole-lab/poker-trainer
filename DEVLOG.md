@@ -208,7 +208,7 @@ Decision: Build two experiences in one app.
 - **Dynamic scenario generator** producing hundreds of unique hands
 - **Two complete user experiences** (Play + Train)
 - **Auth, admin, league branding, feedback collection** — all production
-- **Live at:** poker-trainer-six.vercel.app
+- **Live at:** poker-trainer-ashy.vercel.app
 
 
 ---
@@ -222,36 +222,109 @@ Decision: Build two experiences in one app.
 - Added safety validation: card ranks force-checked against hand code after generation
 - Tested: 650 hands (150 daily + 500 bonus) with zero mismatches
 
+---
+
+## v0.9.2 — Session Tracking & Range Fixes (April 3, 2026)
+
+**Guest session tracking + Admin stats dashboard**
+- Built `app_sessions` Supabase table — tracks every visit (guest + registered)
+- Built `session-tracker.ts` — device fingerprint, heartbeat every 60s, hands counter
+- New Stats tab on admin dashboard with 7-day trends
+- Committed and pushed → Vercel auto-deployed
+
+**Facing-open range gap fix (accuracy critical)**
+- Built automated validation script — tests 14,365 scenarios
+- Filled ALL 37 missing facing-open combos with GTO ranges
+- Re-validated: 0 CRITICAL, 0 GAP issues
+- Fixes Chuck's bug report: BB with 66 vs BTN raise being told to fold
 
 ---
 
-## v0.9.2 — Scenario Generator Rewrite (April 13, 2026)
+## v0.10.0 — UX Vision & Session Timeout Fix (April 5, 2026)
+
+**Major UX review session — retention is the #1 problem**
+
+People are visiting but not coming back. This session produced a comprehensive product vision overhaul.
+
+**Session timeout fix (auth-context.tsx):**
+- Added `visibilitychange` listener to detect when user returns to a stale tab
+- Calls `supabase.auth.refreshSession()` silently on return
+- If refresh fails (token expired beyond recovery), signs user out cleanly
+- Eliminates the frozen/hanging screen that was causing users to abandon the app
+- Status: Code written and TypeScript-validated, pending commit + push
+
+**Two-path UX vision:**
+- Defined casual path ("I play for fun") vs serious path ("I'm here to train")
+- Casual: Play Home with daily challenge front and center, gamification, no homework
+- Serious: Training Hub with assessment, leak fixing, position drills, player profile
+- Daily Hands is the bridge — shared by both paths, the Wordle mechanic
+- Created comprehensive vision document: `Poker-Trainer-UX-Vision-v2.html`
+- Sent to Chuck for review via Gmail draft
+
+**Visual design direction:**
+- Rejected all dark theme variations — too cold, uninviting
+- Approved warm Wordle-inspired palette: cream (#faf8f5), felt green (#4a7c59), gold (#e8a848)
+- Created mockup: `wordle-poker-mockup.html` with home, play, train, and feedback screens
+- 5-tab navigation replacing confusing 8-tab layout
+
+**Navigation overhaul planned:**
+- Current: 8 tabs with Home/Play going to same place
+- New: 5 tabs (Home, Play, Train, Progress, More) with path-dependent content
+- Train tab hidden for casual players
+
+**Scoring philosophy change:**
+- Moving from binary right/wrong to three tiers: Best play / Acceptable / Leak
+- Prevents discouraging beginners who make reasonable but suboptimal plays
+
+**Content issues identified:**
+- Assessment: same 20 hands every time (hardcoded) — testers notice repeats
+- Spot review: doesn't show user's actual answers vs correct answers
+- Progress: all localStorage, no trends, no recommendations
+- Table visualization missing from Daily Hands
+
+**Project management:**
+- Fixed stale URL references across all docs (poker-trainer-six → poker-trainer-ashy)
+- Security audit: no exposed secrets, source maps disabled, RLS configured
+- Confirmed poker-trainer-six was old Vercel deployment name, not another project
+- Complete rewrite of WORK-PLAN.md with 4 priority tiers
+- Updated PROJECT-PLAN.md with two-path vision and revised roadmap
+
+**Files created/modified:**
+- `auth-context.tsx` — session timeout fix (pending commit)
+- `wordle-poker-mockup.html` — visual design mockup
+- `Poker-Trainer-UX-Vision-v2.html` — comprehensive UX vision doc for Chuck
+- `USER-EXPERIENCE-VISION.md` — markdown version of UX vision
+- `WORK-PLAN.md` — complete rewrite with new priorities
+- `PROJECT-PLAN.md` — updated with two-path vision
+- `DEVLOG.md` — this entry
+- `DASHBOARD.md` — updated URLs and status
+
+
+---
+
+## v0.10.1 — Scenario Generator Rewrite (April 13, 2026)
 
 **Bug:** Cards displayed did not match hand in coaching explanation (reported again by Chuck)
 - Example 1: Cards showed J♥T♣ but explanation said "with TT at 25bb"
 - Example 2: Cards showed 6♦4♣ but explanation said "66 at 20bb" (originally fixed in v0.9.1)
-- Root cause: The v0.9.1 fix patched symptoms without addressing the architectural problem.
-  The pipeline had THREE separate stages (spot-generator → play-scenario-generator → React render)
-  each capable of referencing a different hand. A GeneratedSpot object carried both a handCode
-  and a pre-built explanation from the generator; the re-derivation logic in play-scenario-generator
-  had to stay perfectly in sync with the generator's internal state to be correct. Any deviation
-  in the seeded RNG state or fallback code path could decouple them.
+- Root cause: The v0.9.1 and April 11 afternoon patches addressed symptoms without fixing the architectural problem. The pipeline had THREE separate stages (spot-generator → play-scenario-generator → React render) each capable of referencing a different hand. A `GeneratedSpot` object carried both a `handCode` and a pre-built explanation from the generator; the re-derivation logic in play-scenario-generator had to stay perfectly in sync with the generator's internal state to be correct. Any deviation in the seeded RNG state or fallback code path could decouple them.
 
 **Fix: Complete architectural rewrite of play-scenario-generator.ts**
 
 New design principles:
-1. ONE function (buildScenario) derives ALL output fields from the SAME locked primitive
-   parameters: handCode (string), heroKey, stackBb, spotType, opponentKey.
-   Cards, action, explanation, choices — everything comes from this one call.
-2. No GeneratedSpot objects cross the boundary. The generator now picks only primitive
-   parameters (strings + numbers) using the RNG, then passes them directly into buildScenario.
-3. Per-hand RNG isolation: each of the 5 daily hands gets its own sub-seed derived from
-   the master seed XOR'd with the hand index. Picking parameters for hand 3 cannot
-   affect the RNG state used for hand 4.
-4. Post-generation validator (validateScenario) runs on every finished scenario.
-   It checks: card ranks match handCode, explanation text contains handCode, correct
-   index is in range. Any failure is logged and the scenario is skipped/replaced.
-5. Bonus hand fallback: if 20 attempts all fail validation, returns AKs/BTN/25bb as a
-   guaranteed-valid safe fallback.
-6. New handCodeToCards uses XOR-based seed from the hand code characters only —
-   no positional or RNG state can influence which suits are assigned.
+1. ONE function (`buildScenario`) derives ALL output fields from the SAME locked primitive parameters: `handCode` (string), `heroKey`, `stackBb`, `spotType`, `opponentKey`. Cards, action, explanation, choices — everything comes from this one call.
+2. No `GeneratedSpot` objects cross the boundary. The generator now picks only primitive parameters (strings + numbers) using the RNG, then passes them directly into `buildScenario`.
+3. Per-hand RNG isolation: each of the 5 daily hands gets its own sub-seed derived from the master seed XOR'd with the hand index. Picking parameters for hand 3 cannot affect the RNG state used for hand 4.
+4. Post-generation validator (`validateScenario`) runs on every finished scenario. It checks: card ranks match handCode, explanation text contains handCode, correct index is in range. Any failure is logged and the scenario is skipped/replaced.
+5. Bonus hand fallback: if 20 attempts all fail validation, returns AKs/BTN/25bb as a guaranteed-valid safe fallback.
+6. New `handCodeToCards` uses XOR-based seed from the hand code characters only — no positional or RNG state can influence which suits are assigned.
+
+**Also fixed:**
+- `FlaggedHand` type to match Supabase snake_case columns
+- Badge variant values in admin page
+
+**Testing:** 1,300 scenarios tested against real TypeScript source, 0 failures.
+
+**Commit:** `9da7897`
+
+**Version note:** This entry originally shipped in repo-root DEVLOG.md as v0.9.2. Renumbered to v0.10.1 during April 14 reconciliation because v0.9.2 and v0.10.0 already existed in the canonical project-management devlog for different work (April 3 session tracking and April 5 UX vision, respectively).

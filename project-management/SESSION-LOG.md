@@ -4,7 +4,78 @@ This file is updated at the end of every work session. Read this first when star
 
 ---
 
-## Session: April 11, 2026
+## Session: April 13, 2026 (Evening)
+**Focus:** Complete architectural rewrite of scenario generator to permanently kill the card/explanation mismatch bug
+**Note:** This session was worked in regular Claude chat (not cowork). Logged here on April 14 after git history review.
+
+### Context
+Chuck reported the mismatch bug *again* despite the April 7 and April 11 fixes:
+- Example 1: Cards showed J♥T♣ but explanation said "with TT at 25bb"
+- Example 2: Cards showed 6♦4♣ but explanation said "66 at 20bb" (originally fixed in v0.9.1)
+
+Root cause determination: the earlier fixes patched symptoms without addressing the architectural problem. The pipeline had THREE separate stages (spot-generator → play-scenario-generator → React render), each capable of referencing a different hand. A `GeneratedSpot` object carried both a `handCode` and a pre-built explanation; the re-derivation logic had to stay perfectly in sync with the generator's internal RNG state. Any deviation could decouple them.
+
+### What was done
+- **Complete rewrite of `play-scenario-generator.ts` (v2 architecture)** — 763 lines rewritten
+- **Single `buildScenario()` function** derives ALL output fields from the SAME locked primitive parameters: `handCode`, `heroKey`, `stackBb`, `spotType`, `opponentKey`. Cards, action, explanation, choices — everything from one call
+- **Eliminated `GeneratedSpot` crossing the boundary** — the generator now picks only primitive parameters using the RNG, then passes them directly into `buildScenario`. Nothing pre-built leaks through.
+- **Per-hand RNG isolation** — each of the 5 daily hands gets its own sub-seed derived from the master seed XOR'd with the hand index. Picking parameters for hand 3 cannot affect the RNG state used for hand 4.
+- **Post-generation validator (`validateScenario`)** runs on every finished scenario. Checks: card ranks match handCode, explanation text contains handCode, correct index is in range. Any failure is logged and the scenario is skipped/replaced.
+- **Bonus hand fallback** — if 20 attempts all fail validation, returns AKs/BTN/25bb as a guaranteed-valid safe fallback
+- **New `handCodeToCards`** uses XOR-based seed from the hand code characters only — no positional or RNG state can influence which suits are assigned
+- **Also fixed:** `FlaggedHand` type to match Supabase snake_case columns; Badge variant values in admin page
+- **Testing:** 1,300 scenarios tested against real TypeScript source, 0 failures
+- **Committed and pushed** — Commit `9da7897`
+
+### Files changed (998 insertions, 332 deletions across 7 files)
+1. `src/lib/services/play-scenario-generator.ts` — Full rewrite (v2)
+2. `src/lib/services/play-storage.ts` — Minor updates
+3. `src/app/admin/page.tsx` — Badge variant fix
+4. `scripts/run-integration.ts` — NEW integration test harness
+5. `scripts/validate-scenarios.mjs` — NEW validator script
+6. `tsconfig.test.json` — NEW test config
+7. `DEVLOG.md` — Added v0.10.1 entry (at repo root)
+
+### Decisions made
+- The pipeline is now architecturally incapable of producing a mismatch. There is only ONE source of truth (the locked primitives) and ONE derivation function.
+- Fallback hand (AKs/BTN/25bb) is a deliberate sentinel — if users ever see it repeatedly, something is wrong upstream.
+
+### What's next
+- **Ask Chuck to retest** — play through 10-20 bonus hands and confirm no mismatches. Both the Apr 11 afternoon patch and this Apr 13 rewrite should eliminate the bug class.
+- Remaining priorities unchanged from April 11 session queue.
+
+---
+
+## Session: April 11, 2026 (Afternoon)
+**Focus:** Patch card/description mismatch with bulletproof validation layer
+**Note:** This session was worked in regular Claude chat (not cowork). Logged here on April 14 after git history review.
+
+### Context
+Chuck reported the mismatch bug again after the April 7 fix shipped. Example: cards showed 8h 3h but tip said "A2s at 20bb". Previous fix (`e1e19b7`) was apparently not sufficient.
+
+### What was done
+- **Three-layer validation added to `spotToPlayScenario`:**
+  1. Validate cards match handCode after `parseHandCode` — if mismatch, force-rebuild cards directly from handCode characters
+  2. Remove dangerous fallback to `spot.explanation` (pre-cached text that could reference a different hand). ALL explanations now generated fresh from handCode, including a safe fallback for unparseable facing-open spots
+  3. Final safety check: verify explanation text contains handCode. If not, substitute a corrected tip that explicitly names the hand
+- **Froze hands array in `DailyHandsGame` via `useRef`** to prevent parent re-renders from swapping hands mid-game
+- **Added stable `key` props** to game components to force clean remount when new hands are generated
+- **Committed and pushed** — Commit `2bba710`
+
+### Files changed (74 insertions, 11 deletions)
+1. `src/lib/services/play-scenario-generator.ts` — Three-layer validation
+2. `src/app/play/page.tsx` — useRef freeze + stable keys
+
+### Decisions made
+- The React re-render aspect (useRef freeze) was flagged as a potential contributor even though it wasn't confirmed as root cause.
+- Post-mortem: this fix didn't fully solve the problem. Chuck reported mismatches again, which led to the April 13 full rewrite.
+
+### What's next
+- Superseded by April 13 rewrite — validation layer is still in place but now redundant with the v2 architecture.
+
+---
+
+## Session: April 11, 2026 (Morning)
 **Focus:** Build Facing Limpers and 3-Betting Strategy modules
 
 ### What was done
