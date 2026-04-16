@@ -102,11 +102,21 @@ All four critical follow-ups above shipped. Two commits:
 
 ### What's next
 - **Watch the `flagged_hands` table** in Supabase for entries with `note` starting `AUTO_INTEGRITY_FAIL:`. Each row captures the full scenario context (cards, handCode, explanation, position, stack, situation, handIdx, user_id) the moment the mismatch was shown to a user. That's the evidence trail for finally tracking down the A♦3♦ vs AA bug.
-- **Still pending from April 14:** Run the Supabase migration (`supabase-flagged-hands.sql`) to enable hand flagging in production. The auto-flagging code assumes this table exists — if the migration hasn't run, auto-flags will silently fail (they fall back to localStorage via `flagHand`'s error handler).
+- ~~Still pending from April 14: Run the Supabase migration~~ — **Done 2026-04-15**. Chris ran `supabase-flagged-hands.sql` manually in the Supabase SQL editor. Verified via anon REST: `GET /rest/v1/flagged_hands?select=id&limit=0` returns 200. Auto-flag inserts and the admin dashboard hand-flagging views now hit a real table instead of falling back to localStorage.
 - **Optional polish:**
   - Consider adding a separate drill launcher for "Offensive 3-Betting" (facing-open spots where 3-bet is the correct action) — requires generator changes.
   - Raise Sizing module is still prototype-only. Wire it up the same way if/when desired.
   - Verify the new drills page "By Category" list now shows "Facing Limpers" between "Facing 3-Bets" and "Late Position Pressure".
+
+### End-of-day sync (closed 2026-04-15, late night)
+- **Repo state:** clean. `git status` after committing the session-log update → nothing to commit. `origin/master..HEAD` → 0 commits ahead. Tonight's work is live in Vercel.
+- **Supabase migration:** applied. `flagged_hands` table is reachable on the anon REST endpoint (200).
+- **Build:** last clean build was `c2ac777`. No failed builds since. No stuck processes.
+- **Nothing blocked or broken carrying over.** Next session can start fresh on new work.
+- **Guardrail added** so future-me will proactively flag sync issues at session start: see the "Session-start checks" section of `CLAUDE.md` (and user-level memory for cross-project coverage).
+
+### Friction notes (for future-me)
+- Wasted ~15 min trying to OS-automate pasting the migration SQL into Brave for Chris. The Claude window kept reclaiming foreground; `App mode=switch` + minimize attempts didn't stick. Saved as feedback memory: for one-off privileged ops where Chris is already logged in, just hand him the two keystrokes (focus tab, Ctrl+V, Ctrl+Enter) instead of driving the UI.
 
 ---
 

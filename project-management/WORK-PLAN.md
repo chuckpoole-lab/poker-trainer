@@ -1,23 +1,27 @@
 # Poker Trainer — Work Plan & Priorities
-## Updated April 11, 2026
+## Updated April 15, 2026
 
 ---
 
 ## NEXT SESSION: Pick Up Here
 
-1. **Run Supabase migration** — Paste `supabase-flagged-hands.sql` into Supabase SQL editor to enable the hand flagging feature
-2. **Test new modules on live site** — Verify facing-limp and facing-3bet scenarios appear in daily/bonus hands after Vercel rebuilds
-3. **BTN 15bb range fix** — Currently only 24% playable, should be ~35-40%. Update OPENING_RANGES_RAW BTN 15bb entry.
-4. **Review with Chuck** — Discuss UX direction from meeting, get sign-off on nav/color changes
-5. **Start implementing warm color palette** — CSS variables / design tokens swap (cream background, felt green, gold accents)
-6. **Build the 5-tab navigation** — replace current 8-tab layout, wire up path-dependent Home screen
+1. **Check `flagged_hands` for `AUTO_INTEGRITY_FAIL:` rows** — instrumentation was shipped 2026-04-15 and the Supabase table is now live. The next time the A♦3♦-vs-AA mismatch occurs, a row will land with full scenario context (cards, handCode, explanation, position, stack, situation, handIdx, user_id). Open Supabase → Table Editor → `flagged_hands` and filter `note ilike 'AUTO_INTEGRITY_FAIL%'`. Consider a tiny admin view for these rows so Chris doesn't have to click into Supabase.
+2. **Test new modules on live site** — Verify facing-limp and facing-3bet scenarios appear in daily/bonus hands on Vercel. Confirm the two new Learn pages render and drill links work.
+3. **BTN 15bb range fix** — Currently only 24% playable, should be ~35-40%. Update `OPENING_RANGES_RAW` BTN 15bb entry.
+4. **Review with Chuck** — Discuss UX direction from meeting, get sign-off on nav/color changes.
+5. **Start implementing warm color palette** — CSS variables / design tokens swap (cream background, felt green, gold accents).
+6. **Build the 5-tab navigation** — replace current 8-tab layout, wire up path-dependent Home screen.
 
-**Recent completions (April 7-11):**
+**Recent completions (April 7-15):**
 - ✅ Session timeout fix committed and deployed (auth-context.tsx)
 - ✅ Card/description mismatch bug fixed with 3-layer validation (42,250 tests pass)
-- ✅ Hand flagging feature built (play page + admin tab + Supabase schema — just needs migration)
+- ✅ Hand flagging feature built AND migration applied 2026-04-15 (play page + admin tab + Supabase `flagged_hands` live)
 - ✅ Facing Limpers module (24 matchups × 4 stacks, 4 actions: isolate/limp/jam/fold)
 - ✅ 3-Betting Strategy module (36 matchups × 4 stacks, 3 actions: call/fold/4-bet jam)
+- ✅ Eastern Time everywhere in Play mode (daily reset + streak math no longer flip at 8pm ET)
+- ✅ Render-time integrity check on Play hands auto-flags cards-vs-handCode mismatches
+- ✅ Home stats refresh after daily completion (rank, leaderboard, IQ trend all live-update)
+- ✅ Admin dashboard surfaces per-user Play-mode activity (IQ, dailies count, daily accuracy, today-done badge, streak)
 
 ---
 
@@ -284,5 +288,5 @@ Integrating this into the Poker Trainer as a `/reference` module makes strategic
 
 ---
 
-*Updated: April 5, 2026 — major reorganization after UX review session*
-*Next review: April 7, 2026*
+*Updated: April 15, 2026 — migration applied, Play-mode fixes shipped, session closed clean*
+*Next review: after next Chris+Chuck meeting*

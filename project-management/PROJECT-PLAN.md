@@ -1,11 +1,15 @@
 # Poker Trainer — Project Plan & Roadmap
-## Updated April 5, 2026
+## Updated April 15, 2026
 
 ---
 
-## CURRENT STATUS: UX Overhaul Phase
+## CURRENT STATUS: UX Overhaul Phase (with hardening in parallel)
 
-The app is live and in user testing, but retention is the #1 problem — people visit but don't come back. Today's session produced a comprehensive UX vision that redefines the app around two player paths (casual vs serious) with a warm, Wordle-inspired visual design. The session timeout bug that was freezing inactive tabs has been fixed. Next step: get Chuck's sign-off on the UX vision, then begin implementation.
+The app is live and in user testing. Retention remains the #1 problem — people visit but don't come back. The UX vision is set (two player paths — casual vs serious — warm Wordle-inspired design) and awaiting Chuck's sign-off before the 5-tab nav / palette swap begins.
+
+While UX is blocked on review, the stability work has advanced. As of 2026-04-15 the Play mode is fully on Eastern Time (daily reset no longer flips at 8pm ET), Play-mode integrity is instrumented (any cards-vs-handCode mismatch auto-flags to Supabase with full scenario context), home-screen stats refresh live after a daily challenge, the admin dashboard now surfaces per-user Play-mode activity, and the `flagged_hands` Supabase migration is applied (instrumentation is wired end-to-end). The Facing Limpers and 3-Betting modules are live with their own Learn pages and Train launchers.
+
+Next step: get Chuck's sign-off on the UX vision, then begin the palette + nav implementation. In parallel, watch `flagged_hands` for `AUTO_INTEGRITY_FAIL:` rows — that's the evidence trail for the recurring A♦3♦-vs-AA mismatch bug.
 
 **UX Vision Document:** `Poker-Trainer-UX-Vision-v2.html` (sent to Chuck for review)
 
