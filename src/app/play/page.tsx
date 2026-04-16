@@ -582,14 +582,34 @@ export default function PlayPage() {
     if (user) {
       await saveDailyChallengeResult(user.id, score, DAILY_COUNT, results, iq, newIq);
       await checkAndAwardBadges(user.id);
-      const newStreak = await getStreak(user.id);
+      // Refresh EVERYTHING that's shown on the home screen so stats don't go stale.
+      // Previously we only refreshed streak, which left rank stuck at "#1 of 1",
+      // the IQ history chart missing today's data point, and the leaderboard showing
+      // pre-completion standings. All of these update in the background after
+      // saveDailyChallengeResult runs — we just have to re-fetch them.
+      const [newStreak, rankData, board, history] = await Promise.all([
+        getStreak(user.id),
+        getUserRankWithCount(user.id, profile?.league_slug ?? null),
+        getLeaderboard(profile?.league_slug ?? null, 10),
+        getDailyChallengeHistory(user.id, 14),
+      ]);
       setStreak(newStreak.current_streak);
+      setRank(rankData.rank);
+      setTotalPlayers(rankData.total);
+      setLeaderboard(board);
+      if (history.length > 0) {
+        const pts = history
+          .filter((h: { challenge_date: string; iq_after: number }) => h.iq_after != null)
+          .map((h: { challenge_date: string; iq_after: number }) => ({ date: h.challenge_date, iq: h.iq_after }))
+          .reverse();
+        setIqHistory(pts);
+      }
       setTodayDone(true);
     } else {
       saveGuestData('play-stats', { iq: newIq, streak: streak + 1 });
       setStreak(prev => prev + 1);
     }
-  }, [user, iq, streak]);
+  }, [user, profile, iq, streak]);
 
   // Handle "Keep Playing" — generate 5 bonus hands
   const handleKeepPlaying = useCallback(() => {

@@ -177,31 +177,70 @@ export async function getCloudProgressStats(userId: string) {
 export async function getAllUsersStats() {
   const { data: profiles, error } = await supabase
     .from('profiles')
-    .select('id, display_name, email, avatar_url, is_admin, created_at');
+    .select('id, display_name, email, avatar_url, is_admin, created_at, poker_iq, preferred_mode, league_slug');
 
   if (error || !profiles) return [];
 
-  // Fetch stats for all users in parallel
+  const todayET = easternTodayStr();
+
+  // Fetch stats for all users in parallel. We include daily challenges (Play mode
+  // primary metric) so admins can see who's actually active on the app, not just
+  // who's done a drill.
   const usersWithStats = await Promise.all(
     profiles.map(async (profile) => {
-      const [drills, assessments, streak] = await Promise.all([
+      const [drills, assessments, streak, dailyHistory] = await Promise.all([
         getDrillHistory(profile.id),
         getAssessmentHistory(profile.id),
         getStreak(profile.id),
+        supabase
+          .from('daily_challenge_results')
+          .select('challenge_date, score, total, completed_at')
+          .eq('user_id', profile.id)
+          .order('completed_at', { ascending: false })
+          .then(r => r.data ?? []),
       ]);
 
       const totalSpots = drills.reduce((sum: number, d: { total: number }) => sum + d.total, 0);
       const totalCorrect = drills.reduce((sum: number, d: { correct: number }) => sum + d.correct, 0);
       const latestAssessment = assessments.length > 0 ? assessments[0] : null;
+      const latestDaily = dailyHistory[0] ?? null;
+      const dailyTotal = dailyHistory.length;
+      const dailyCorrect = dailyHistory.reduce(
+        (sum: number, d: { score: number }) => sum + (d.score ?? 0),
+        0,
+      );
+      const dailySpots = dailyHistory.reduce(
+        (sum: number, d: { total: number }) => sum + (d.total ?? 0),
+        0,
+      );
+      const todayDone = dailyHistory.some(
+        (d: { challenge_date: string }) => d.challenge_date === todayET,
+      );
+
+      // Last active: pick the most recent of any activity signal (daily, drill, assessment).
+      const candidates: string[] = [
+        latestDaily?.completed_at,
+        drills[0]?.completed_at,
+        assessments[0]?.completed_at,
+        profile.created_at,
+      ].filter((v): v is string => Boolean(v));
+      const lastActive = candidates
+        .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0];
 
       return {
         ...profile,
+        pokerIq: profile.poker_iq ?? 100,
         drillsCompleted: drills.length,
         spotsPracticed: totalSpots,
         accuracy: totalSpots > 0 ? Math.round((totalCorrect / totalSpots) * 100) : 0,
         currentStreak: streak.current_streak,
         latestScore: latestAssessment?.overall_score ?? null,
-        lastActive: drills[0]?.completed_at ?? assessments[0]?.completed_at ?? profile.created_at,
+        lastActive,
+        dailyChallengesPlayed: dailyTotal,
+        dailySpotsPlayed: dailySpots,
+        dailyAccuracy: dailySpots > 0 ? Math.round((dailyCorrect / dailySpots) * 100) : 0,
+        latestChallengeDate: latestDaily?.challenge_date ?? null,
+        todayCompleted: todayDone,
       };
     })
   );

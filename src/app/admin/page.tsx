@@ -16,12 +16,20 @@ interface UserStat {
   avatar_url: string | null;
   is_admin: boolean;
   created_at: string;
+  pokerIq: number;
+  preferred_mode: string | null;
+  league_slug: string | null;
   drillsCompleted: number;
   spotsPracticed: number;
   accuracy: number;
   currentStreak: number;
   latestScore: number | null;
   lastActive: string;
+  dailyChallengesPlayed: number;
+  dailySpotsPlayed: number;
+  dailyAccuracy: number;
+  latestChallengeDate: string | null;
+  todayCompleted: boolean;
 }
 
 type AdminTab = 'stats' | 'users' | 'leagues' | 'feedback' | 'flags';
@@ -99,7 +107,11 @@ export default function AdminDashboard() {
   }
 
   const totalUsers = users.length;
-  const activeUsers = users.filter(u => u.drillsCompleted > 0 || u.latestScore !== null).length;
+  // "Active" now counts anyone with ANY activity signal — daily challenges, drills, or assessments.
+  // Previously this missed the majority of Play-mode users who had never touched drills.
+  const activeUsers = users.filter(u =>
+    u.dailyChallengesPlayed > 0 || u.drillsCompleted > 0 || u.latestScore !== null
+  ).length;
   const avgAccuracy = users.filter(u => u.spotsPracticed > 0).length > 0
     ? Math.round(users.filter(u => u.spotsPracticed > 0).reduce((s, u) => s + u.accuracy, 0) / users.filter(u => u.spotsPracticed > 0).length)
     : 0;
@@ -417,14 +429,22 @@ export default function AdminDashboard() {
                           fontWeight: 700,
                           color: 'var(--on-surface)',
                           fontFamily: 'var(--font-body)',
+                          display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6,
                         }}>
-                          {u.display_name || u.email?.split('@')[0] || 'Unknown'}
+                          <span>{u.display_name || u.email?.split('@')[0] || 'Unknown'}</span>
                           {u.is_admin && (
-                            <Badge variant="neutral" size="sm" style={{ marginLeft: 8 }}>Admin</Badge>
+                            <Badge variant="neutral" size="sm">Admin</Badge>
+                          )}
+                          {u.todayCompleted && (
+                            <Badge variant="correct" size="sm">Played today</Badge>
+                          )}
+                          {u.preferred_mode && (
+                            <Badge variant="neutral" size="sm">{u.preferred_mode}</Badge>
                           )}
                         </div>
                         <div style={{ fontSize: 'var(--text-xs)', color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>
                           {u.email} &middot; Last active {formatDate(u.lastActive)}
+                          {u.currentStreak > 0 && ` · 🔥 ${u.currentStreak}-day streak`}
                         </div>
                       </div>
                       {u.id !== user?.id && (
@@ -448,40 +468,48 @@ export default function AdminDashboard() {
                       )}
                     </div>
 
-                    {/* Stats row */}
+                    {/* Stats row — Play-mode stats first since most users are on Play */}
                     <div style={{
                       display: 'grid',
-                      gridTemplateColumns: '1fr 1fr 1fr 1fr',
+                      gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr',
                       gap: 8,
                       background: 'var(--surface-high)',
                       borderRadius: 'var(--radius-md)',
                       padding: '10px 12px',
                     }}>
                       <div style={{ textAlign: 'center' }}>
-                        <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--on-surface)', fontFamily: 'var(--font-display)' }}>
-                          {u.drillsCompleted}
+                        <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--primary)', fontFamily: 'var(--font-display)' }}>
+                          {u.pokerIq}
                         </div>
                         <div style={{ fontSize: 9, color: 'var(--muted)', fontFamily: 'var(--font-body)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                          Drills
+                          IQ
                         </div>
                       </div>
                       <div style={{ textAlign: 'center' }}>
                         <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--on-surface)', fontFamily: 'var(--font-display)' }}>
-                          {u.spotsPracticed}
+                          {u.dailyChallengesPlayed}
                         </div>
                         <div style={{ fontSize: 9, color: 'var(--muted)', fontFamily: 'var(--font-body)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                          Spots
+                          Dailies
                         </div>
                       </div>
                       <div style={{ textAlign: 'center' }}>
                         <div style={{
                           fontSize: 16, fontWeight: 800, fontFamily: 'var(--font-display)',
-                          color: u.accuracy >= 80 ? 'var(--color-correct)' : u.accuracy >= 60 ? 'var(--color-acceptable)' : u.accuracy > 0 ? 'var(--color-leak)' : 'var(--muted)',
+                          color: u.dailyAccuracy >= 80 ? 'var(--color-correct)' : u.dailyAccuracy >= 60 ? 'var(--color-acceptable)' : u.dailyAccuracy > 0 ? 'var(--color-leak)' : 'var(--muted)',
                         }}>
-                          {u.spotsPracticed > 0 ? `${u.accuracy}%` : '—'}
+                          {u.dailySpotsPlayed > 0 ? `${u.dailyAccuracy}%` : '—'}
                         </div>
                         <div style={{ fontSize: 9, color: 'var(--muted)', fontFamily: 'var(--font-body)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                          Accuracy
+                          Daily Acc
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--on-surface)', fontFamily: 'var(--font-display)' }}>
+                          {u.drillsCompleted}
+                        </div>
+                        <div style={{ fontSize: 9, color: 'var(--muted)', fontFamily: 'var(--font-body)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                          Drills
                         </div>
                       </div>
                       <div style={{ textAlign: 'center' }}>
