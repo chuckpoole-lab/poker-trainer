@@ -82,8 +82,27 @@ Chose "option 1" — wire up the prototype modules properly rather than soften t
 - **Stats not refreshing on home page** (Chris: still #1 of 1, play count stuck). Suspect home `load()` only runs once on mount — doesn't refetch after daily challenge completion. Needs investigation.
 - **Admin activity visibility** — no per-user activity view; Chris can't see who's doing what.
 
+### Additional work (same session, after context reset)
+All four critical follow-ups above shipped. Two commits:
+
+- `bc67222` — fix: Eastern Time for daily/streak + add integrity check on play hands
+  - `play-storage.ts`: extracted `easternTodayStr()` / `easternYesterdayStr()` helpers; replaced all 4 UTC date splits (getTodaysChallenge, saveDailyChallengeResult, updatePlayStreak, and the yesterday comparison inside it) with America/New_York versions.
+  - `cloud-storage.ts`: same helpers added, replaced UTC at lines 83/107 in `updateStreak`.
+  - `play-scenario-generator.ts`: `generateDailyHands()` now uses Eastern Time so the daily hand set matches the user's local day.
+  - `play/page.tsx`: added a render-time integrity check inside `DailyHandsGame`. On each handIdx change, it compares `hand.cards[0/1].rank` against `hand.handCode[0/1]` and checks that `tipRight`/`tipWrong` reference the handCode. On fail, it `console.error`s the full scenario object, auto-inserts a `flagged_hands` row with `note: "AUTO_INTEGRITY_FAIL: …"`, and shows an inline red warning to the user. This captures real evidence for the A♦3♦ vs AA bug that couldn't be reproduced locally.
+
+- `0325d81` — fix: refresh home stats after daily + admin visibility for Play-mode users
+  - `play/page.tsx` `handleDailyComplete`: after `saveDailyChallengeResult`, now also re-fetches rank, total players, leaderboard, and iqHistory in parallel. Previously only streak updated — leaving "#1 of 1" stuck and the IQ trend chart a step behind.
+  - `cloud-storage.ts` `getAllUsersStats`: now pulls `daily_challenge_results` and `profile.poker_iq` / `preferred_mode` / `league_slug`. Computes `dailyChallengesPlayed`, `dailyAccuracy`, `todayCompleted`, and uses the most-recent activity across dailies/drills/assessments for `lastActive`.
+  - `admin/page.tsx`: `UserStat` interface extended. Each user card now shows IQ, dailies count, daily accuracy, drills, and latest assessment (5-col grid). Header row shows "Played today" badge (when true), preferred_mode badge, and streak emoji. Active-user counter now counts daily-only players.
+
+### Validation (post-reset)
+- `npm run build` clean twice (post-timezone fix and post-admin fix). 24 routes, TypeScript 4.x passes, Turbopack compile ~3s, static generation all OK.
+- Live deploy on Vercel picks up automatically on push to master.
+
 ### What's next
-- **Still pending from April 14:** Run the Supabase migration (`supabase-flagged-hands.sql`) to enable hand flagging in production.
+- **Watch the `flagged_hands` table** in Supabase for entries with `note` starting `AUTO_INTEGRITY_FAIL:`. Each row captures the full scenario context (cards, handCode, explanation, position, stack, situation, handIdx, user_id) the moment the mismatch was shown to a user. That's the evidence trail for finally tracking down the A♦3♦ vs AA bug.
+- **Still pending from April 14:** Run the Supabase migration (`supabase-flagged-hands.sql`) to enable hand flagging in production. The auto-flagging code assumes this table exists — if the migration hasn't run, auto-flags will silently fail (they fall back to localStorage via `flagHand`'s error handler).
 - **Optional polish:**
   - Consider adding a separate drill launcher for "Offensive 3-Betting" (facing-open spots where 3-bet is the correct action) — requires generator changes.
   - Raise Sizing module is still prototype-only. Wire it up the same way if/when desired.
