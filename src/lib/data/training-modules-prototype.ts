@@ -1,12 +1,17 @@
 /**
- * Training Module Content — Prototypes for future Train mode modules
- * 
+ * Training Module Content — overview lessons for Learn mode.
+ *
  * Each module follows the pattern:
- * 1. Strategy overview (shown first time, available as refresher)
- * 2. Key concepts with examples
- * 3. Drill hands that test the specific skill
- * 
- * NOT DEPLOYED — prototype content for review
+ * 1. Strategy overview (read-only lesson shown on /learn/<slug>)
+ * 2. Key concepts organized into short sections
+ * 3. Optional drill examples (not currently surfaced in UI — the drill engine
+ *    at /drills/session generates live hands from range-tables instead)
+ *
+ * Deployed as of 2026-04-15:
+ *   - THREE_BETTING_MODULE    → /learn/three-betting → drill: mod_facing_3bets
+ *   - FACING_LIMPERS_MODULE   → /learn/facing-limpers → drill: mod_facing_limpers
+ *
+ * RAISE_SIZING_MODULE is still prototype (no lesson/drill wired yet).
  */
 
 // ============================================================

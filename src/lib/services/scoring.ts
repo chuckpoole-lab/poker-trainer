@@ -23,6 +23,7 @@ const LEAK_DISPLAY_NAMES: Record<LeakCategoryId, string> = {
   [LeakCategoryId.SB_FUNDAMENTALS]: 'Small Blind Fundamentals',
   [LeakCategoryId.FACING_3BETS]: 'Facing 3-Bets',
   [LeakCategoryId.FACING_OPENS]: 'Facing Opens',
+  [LeakCategoryId.FACING_LIMPS]: 'Facing Limpers',
 };
 
 /**

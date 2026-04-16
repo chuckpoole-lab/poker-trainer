@@ -2,7 +2,19 @@
 
 import { useRouter } from 'next/navigation';
 
-const PHASES = [
+type Phase = {
+  id: string;
+  title: string;
+  subtitle: string;
+  description: string;
+  icon: string;
+  href: string;
+  count: number;
+  unit: 'questions' | 'sections';
+  estimate: string;
+};
+
+const PHASES: Phase[] = [
   {
     id: 'foundations',
     title: 'Poker Foundations',
@@ -10,7 +22,8 @@ const PHASES = [
     description: 'Positions, terminology, and core concepts every player needs.',
     icon: '🧠',
     href: '/learn/foundations',
-    questions: 14,
+    count: 14,
+    unit: 'questions',
     estimate: '5 min',
   },
   {
@@ -20,7 +33,8 @@ const PHASES = [
     description: 'UTG and UTG+1: why tight is right when you act first.',
     icon: '🔒',
     href: '/learn/positions?group=early',
-    questions: 7,
+    count: 7,
+    unit: 'questions',
     estimate: '5 min',
   },
   {
@@ -30,7 +44,8 @@ const PHASES = [
     description: 'MP, LJ, and HJ: the transition zone where ranges expand.',
     icon: '↔️',
     href: '/learn/positions?group=middle',
-    questions: 7,
+    count: 7,
+    unit: 'questions',
     estimate: '5 min',
   },
   {
@@ -40,7 +55,8 @@ const PHASES = [
     description: 'CO and BTN: the profit seats. Steal blinds and play wide.',
     icon: '💰',
     href: '/learn/positions?group=late',
-    questions: 7,
+    count: 7,
+    unit: 'questions',
     estimate: '5 min',
   },
   {
@@ -50,8 +66,31 @@ const PHASES = [
     description: 'SB aggression and BB defense from the toughest seats.',
     icon: '🛡️',
     href: '/learn/positions?group=blinds',
-    questions: 7,
+    count: 7,
+    unit: 'questions',
     estimate: '5 min',
+  },
+  {
+    id: 'facing_limpers',
+    title: 'Facing Limpers',
+    subtitle: 'Phase 3a',
+    description: 'Isolate, limp behind, or jam — exploit the most common play in bar poker.',
+    icon: '🎯',
+    href: '/learn/facing-limpers',
+    count: 6,
+    unit: 'sections',
+    estimate: '4 min',
+  },
+  {
+    id: 'three_betting',
+    title: '3-Betting Strategy',
+    subtitle: 'Phase 3b',
+    description: 'When to re-raise, 4-bet jam, or fold — value, bluffs, and positional adjustments.',
+    icon: '🔥',
+    href: '/learn/three-betting',
+    count: 6,
+    unit: 'sections',
+    estimate: '4 min',
   },
 ];
 
@@ -111,7 +150,7 @@ export default function LearnPage() {
                 {phase.description}
               </p>
               <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '6px 0 0', opacity: 0.7 }}>
-                {phase.questions} questions &middot; ~{phase.estimate}
+                {phase.count} {phase.unit} &middot; ~{phase.estimate}
               </p>
             </div>
           </button>

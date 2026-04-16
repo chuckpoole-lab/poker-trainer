@@ -124,7 +124,7 @@ function classifyDifficulty(hand: HandCombo, action: SimplifiedAction, scenario:
 
 function assignLeakCategory(scenario: Scenario, action: SimplifiedAction): LeakCategoryId {
   if (scenario.type === 'facing_open') return LeakCategoryId.FACING_OPENS;
-  if (scenario.type === 'facing_limp') return LeakCategoryId.FACING_OPENS; // Reuse category for limps
+  if (scenario.type === 'facing_limp') return LeakCategoryId.FACING_LIMPS;
   if (scenario.type === 'facing_3bet') return LeakCategoryId.FACING_3BETS;
 
   const s = scenario as UnopenedScenario;
@@ -480,9 +480,14 @@ function parseFacing3BetKey(key: string): { hero: Position; threeBettor: Positio
 // ======= PUBLIC API =======
 
 export function generateDrillSpot(preferredCategory?: LeakCategoryId): GeneratedSpot {
-  // If asking for facing opens, generate facing-open or facing-limp
+  // Facing opens now drills facing-open only (limpers have their own category)
   if (preferredCategory === LeakCategoryId.FACING_OPENS) {
-    return Math.random() < 0.7 ? generateFacingOpenSpot() : generateFacingLimpSpot();
+    return generateFacingOpenSpot();
+  }
+
+  // Facing limpers: pure limp drill
+  if (preferredCategory === LeakCategoryId.FACING_LIMPS) {
+    return generateFacingLimpSpot();
   }
 
   // If asking for facing 3-bets, always generate that type

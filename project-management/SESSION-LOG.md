@@ -4,6 +4,70 @@ This file is updated at the end of every work session. Read this first when star
 
 ---
 
+## Session: April 15, 2026
+**Focus:** Wire up Facing Limpers and 3-Betting modules so the What's New tab isn't lying
+
+### Context
+Chris flagged that the "What's New" tab on the Play home screen advertises "Facing limpers" and "3-bet training" as new features, but there were no dedicated modules for them anywhere a user could navigate to. Investigation confirmed:
+- Scenario generator and range tables for limps and 3-bets were fully wired in (they DO appear as 15% / 10% of daily/bonus hands).
+- `src/lib/data/training-modules-prototype.ts` had full module content (overviews + drills) labeled `NOT DEPLOYED` and was imported nowhere in `/src`.
+- No lessons in the Learn page or launchers in the Train page for either topic.
+
+Chose "option 1" — wire up the prototype modules properly rather than soften the What's New copy.
+
+### What was done
+
+**New leak category + drill module:**
+- Added `LeakCategoryId.FACING_LIMPS = 'facing_limps'` to `src/lib/types/enums.ts`.
+- Added matching `LEAK_CATEGORIES` entry and `mod_facing_limpers` module (curriculumOrder 7, spotPoolSize 120) to `src/lib/data/categories.ts`.
+- Bumped `mod_lp_pressure` curriculumOrder from 7 → 8 to make room.
+- Updated `assignLeakCategory` in `src/lib/services/spot-generator.ts` — facing-limp scenarios now map to `FACING_LIMPS` instead of reusing `FACING_OPENS`.
+
+**Spot generator dispatch change (behavior note):**
+- Drilling `mod_facing_opens` used to return a 70/30 mix of open-raises and limps. Now returns 100% pure facing-open-raise spots. Limps live in the new `mod_facing_limpers` drill (100% pure limps).
+- Daily/bonus hand mixed dispatch is unchanged (still 35/15/10/40 open / limp / 3-bet / unopened).
+
+**Learn lesson pages (new, read-only overviews):**
+- `src/app/learn/facing-limpers/page.tsx` — renders `FACING_LIMPERS_MODULE.overview` (6 sections from the prototype) with "Start Facing Limpers Drill" CTA → `/drills/session?module=mod_facing_limpers&count=15`.
+- `src/app/learn/three-betting/page.tsx` — renders `THREE_BETTING_MODULE.overview` (6 sections) with "Start Facing 3-Bets Drill" CTA → `/drills/session?module=mod_facing_3bets&count=15`.
+- Added Phase 3a/3b cards to `src/app/learn/page.tsx` linking to both new lessons.
+- Refactored the PHASES array to have a `unit` field (`questions` vs `sections`) so the count label is accurate for read-only lessons.
+
+**Train page launchers (new):**
+- Added "Facing Limpers" and "3-Bet Defense" launcher cards between Short Stack Jam/Fold and Learn the Basics.
+- Both tagged "New" with a new orange `'new'` tagType. Introduced `TAG_STYLES` lookup so future tag types are trivial to add.
+
+**Prototype file update:**
+- Updated the header comment in `training-modules-prototype.ts` from "NOT DEPLOYED — prototype content for review" to reflect that the facing-limpers and 3-betting modules are now wired in. Raise-sizing module remains prototype-only.
+
+### Files changed
+1. `src/lib/types/enums.ts` — added `FACING_LIMPS`
+2. `src/lib/data/categories.ts` — added leak category + module; renumbered `mod_lp_pressure`
+3. `src/lib/services/spot-generator.ts` — dispatch now splits FACING_OPENS (pure) / FACING_LIMPS (pure); assignLeakCategory routes limp scenarios to FACING_LIMPS
+4. `src/lib/data/training-modules-prototype.ts` — header comment
+5. `src/app/learn/page.tsx` — 2 new phase cards; Phase type with unit field
+6. `src/app/learn/facing-limpers/page.tsx` — NEW
+7. `src/app/learn/three-betting/page.tsx` — NEW
+8. `src/app/train/page.tsx` — 2 new launchers; TAG_STYLES lookup
+
+### Decisions made
+- Split `FACING_OPENS` and `FACING_LIMPS` into distinct leak categories rather than piling limps into the existing facing-opens drill. Cleaner for the user (if you want to practice limps, you drill limps; if you want opens, you drill opens) and for future progress-tracking.
+- Learn pages are read-only overview pages (no quiz component). The "practice" step is the drill, not a second quiz. Kept scope tight.
+- 3-Betting lesson links to the `mod_facing_3bets` drill even though that drill is about *defending* a 3-bet and the lesson covers both offense and defense. The mismatch is small — the prototype content explains the general concept well enough that facing-3-bet practice still reinforces it. A dedicated "offensive 3-bet" drill would need a new spot type in the generator (you're facing an open and choosing to 3-bet/raise); worth considering later but not blocking.
+
+### Validation
+- Could not run `tsc --noEmit` from this session (shell sandbox can only see `project-management/`, not the full repo). Manually eyeballed all edits; no obvious type errors. Chris should run `npm run build` locally before pushing to catch anything missed.
+
+### What's next
+- **Chris: run `npm run build` locally** to confirm TypeScript clean, then commit + push all changes from this session plus the 3 unpushed commits from April 14 (timezone fix, BTN 15bb widen, SB→BB limp fix).
+- **Still pending from April 14:** Run the Supabase migration (`supabase-flagged-hands.sql`) to enable hand flagging in production.
+- **Optional polish:**
+  - Consider adding a separate drill launcher for "Offensive 3-Betting" (facing-open spots where 3-bet is the correct action) — requires generator changes.
+  - Raise Sizing module is still prototype-only. Wire it up the same way if/when desired.
+  - Verify the new drills page "By Category" list now shows "Facing Limpers" between "Facing 3-Bets" and "Late Position Pressure".
+
+---
+
 ## Session: April 14, 2026
 **Focus:** Catch-up review after chat-session work, code review across all April 6–13 commits, clear critical bugs
 

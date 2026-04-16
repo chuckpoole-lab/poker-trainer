@@ -11,6 +11,7 @@ export const LEAK_CATEGORIES: LeakCategory[] = [
   { id: LeakCategoryId.SB_FUNDAMENTALS, name: 'small_blind_fundamentals', displayName: 'Small Blind Fundamentals', description: 'Tests SB-specific aggression and avoiding passive play.', importanceWeight: 1.0, studyPriorityOrder: 6 },
   { id: LeakCategoryId.FACING_3BETS, name: 'facing_3bets', displayName: 'Facing 3-Bets', description: 'Tests continue/fold logic after opening and getting 3-bet.', importanceWeight: 1.0, studyPriorityOrder: 5 },
   { id: LeakCategoryId.FACING_OPENS, name: 'facing_opens', displayName: 'Facing Opens', description: 'Tests 3-bet, call, and fold decisions when another player has already raised.', importanceWeight: 1.2, studyPriorityOrder: 3 },
+  { id: LeakCategoryId.FACING_LIMPS, name: 'facing_limps', displayName: 'Facing Limpers', description: 'Tests isolate, limp-behind, jam, and fold decisions when an opponent limps in.', importanceWeight: 1.1, studyPriorityOrder: 4 },
 ];
 
 export const MODULES: Module[] = [
@@ -26,7 +27,8 @@ export const MODULES: Module[] = [
   // Phase 3: Assessment-driven modules (existing, renumbered)
   { id: 'mod_facing_opens', name: 'facing_opens', displayName: 'Facing Opens', description: '3-bet, call, or fold vs opens at multiple stack depths and positions.', curriculumPhase: CurriculumPhase.ASSESSMENT, curriculumOrder: 5, primaryLeakCategory: LeakCategoryId.FACING_OPENS, spotPoolSize: 250, positions: ['CO', 'BTN', 'SB', 'BB'] },
   { id: 'mod_facing_3bets', name: 'facing_3bets', displayName: 'Facing 3-Bets', description: 'Responding when your open gets 3-bet at various stack depths.', curriculumPhase: CurriculumPhase.ASSESSMENT, curriculumOrder: 6, primaryLeakCategory: LeakCategoryId.FACING_3BETS, spotPoolSize: 169, positions: ['UTG', 'HJ', 'CO', 'BTN'] },
-  { id: 'mod_lp_pressure', name: 'late_position_pressure', displayName: 'Late Position Pressure', description: 'Steal opportunities from CO and BTN at 20-30bb.', curriculumPhase: CurriculumPhase.ASSESSMENT, curriculumOrder: 7, primaryLeakCategory: LeakCategoryId.LP_PRESSURE, spotPoolSize: 169, positions: ['CO', 'BTN'] },
+  { id: 'mod_facing_limpers', name: 'facing_limpers', displayName: 'Facing Limpers', description: 'Isolate, limp behind, or jam over weak limps from every position.', curriculumPhase: CurriculumPhase.ASSESSMENT, curriculumOrder: 7, primaryLeakCategory: LeakCategoryId.FACING_LIMPS, spotPoolSize: 120, positions: ['BTN', 'SB', 'BB'] },
+  { id: 'mod_lp_pressure', name: 'late_position_pressure', displayName: 'Late Position Pressure', description: 'Steal opportunities from CO and BTN at 20-30bb.', curriculumPhase: CurriculumPhase.ASSESSMENT, curriculumOrder: 8, primaryLeakCategory: LeakCategoryId.LP_PRESSURE, spotPoolSize: 169, positions: ['CO', 'BTN'] },
 
   // Phase 4: Stack Depth modules (existing, pushed later)
   { id: 'mod_10bb_jam', name: '10bb_jam_fundamentals', displayName: '10bb Jam Fundamentals', description: 'Push/fold from HJ, CO, BTN, SB at 10bb.', curriculumPhase: CurriculumPhase.STACK_DEPTH, curriculumOrder: 8, primaryLeakCategory: LeakCategoryId.TEN_BB_PUSH_FOLD, spotPoolSize: 169, positions: ['HJ', 'CO', 'BTN', 'SB'] },

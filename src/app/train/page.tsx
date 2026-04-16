@@ -2,6 +2,13 @@
 
 import { useRouter } from 'next/navigation';
 
+type TagType = 'time' | 'rec' | 'new';
+const TAG_STYLES: Record<TagType, { bg: string; color: string }> = {
+  time: { bg: '#f0ebe3', color: '#999' },
+  rec: { bg: '#e8f5e9', color: '#2e7d32' },
+  new: { bg: '#fff3e0', color: '#e65100' },
+};
+
 const TRAIN_OPTIONS = [
   {
     icon: '🎯',
@@ -47,6 +54,24 @@ const TRAIN_OPTIONS = [
     tag: '~5 min',
     tagType: 'time' as const,
     href: '/drills',
+  },
+  {
+    icon: '🎯',
+    iconBg: '#fff3e0',
+    title: 'Facing Limpers',
+    desc: 'Isolate, limp behind, or jam over weak limps',
+    tag: 'New',
+    tagType: 'new' as const,
+    href: '/drills/session?module=mod_facing_limpers&count=15',
+  },
+  {
+    icon: '🔥',
+    iconBg: '#fce4ec',
+    title: '3-Bet Defense',
+    desc: 'Know when to call, fold, or 4-bet jam',
+    tag: 'New',
+    tagType: 'new' as const,
+    href: '/drills/session?module=mod_facing_3bets&count=15',
   },
   {
     icon: '📘',
@@ -151,8 +176,8 @@ export default function TrainPage() {
                 fontWeight: 600,
                 padding: '2px 8px',
                 borderRadius: 20,
-                background: opt.tagType === 'rec' ? '#e8f5e9' : '#f0ebe3',
-                color: opt.tagType === 'rec' ? '#2e7d32' : '#999',
+                background: TAG_STYLES[opt.tagType].bg,
+                color: TAG_STYLES[opt.tagType].color,
                 textTransform: 'uppercase',
                 letterSpacing: '0.5px',
               }}>

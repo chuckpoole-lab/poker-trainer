@@ -45,3 +45,8 @@ scripts/
 next-env.d.ts
 
 .vercel
+
+# local dev artifacts
+build-log.txt
+.commitmsg
+project-management/_backups/

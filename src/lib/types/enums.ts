@@ -79,6 +79,7 @@ export enum LeakCategoryId {
   SB_FUNDAMENTALS = 'small_blind_fundamentals',
   FACING_3BETS = 'facing_3bets',
   FACING_OPENS = 'facing_opens',
+  FACING_LIMPS = 'facing_limps',
 }
 
 export enum ComplexityMode {
