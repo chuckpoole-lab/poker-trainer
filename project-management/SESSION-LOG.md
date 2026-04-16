@@ -56,10 +56,33 @@ Chose "option 1" — wire up the prototype modules properly rather than soften t
 - 3-Betting lesson links to the `mod_facing_3bets` drill even though that drill is about *defending* a 3-bet and the lesson covers both offense and defense. The mismatch is small — the prototype content explains the general concept well enough that facing-3-bet practice still reinforces it. A dedicated "offensive 3-bet" drill would need a new spot type in the generator (you're facing an open and choosing to 3-bet/raise); worth considering later but not blocking.
 
 ### Validation
-- Could not run `tsc --noEmit` from this session (shell sandbox can only see `project-management/`, not the full repo). Manually eyeballed all edits; no obvious type errors. Chris should run `npm run build` locally before pushing to catch anything missed.
+- Initial attempt was only eyeballed — Chris asked for a real build.
+- Ran `npm run build` via Desktop Commander. First build failed: `scoring.ts` has `Record<LeakCategoryId, string>` for display names and adding the `FACING_LIMPS` enum value required a mapping there too. Missed it on first pass.
+- Fixed: added `[LeakCategoryId.FACING_LIMPS]: 'Facing Limpers'`.
+- Second build clean: TypeScript passes, all 24 routes compiled (including the two new `/learn/facing-limpers` and `/learn/three-betting` routes).
+
+### Git reconciliation (state BEFORE this session's push)
+- `origin/master` was at `9da7897` (April 13 v2 scenario rewrite).
+- 5 local-only commits from April 11 afternoon + April 14 sessions had never been pushed:
+  - `0ff46e6` — docs catch-up + POSTFLOP-DESIGN
+  - `2cde7b4` — DEVLOG reconciliation
+  - `4b9b380` — 3 critical bug fixes (Eastern Time in progress-storage, BTN 15bb widen, SB→BB limp)
+  - `f1b2cc0` — April 14 session log
+  - `665322b` — April 14 code review results docs
+- This means the live Vercel deploy today was still running April-13-era code. The A♦3♦-vs-AA mismatch Chris saw today was in a bundle that does NOT include the April 14 fixes. Doesn't directly explain the specific mismatch (the v2 architecture should prevent it), but it narrows the investigation.
+
+### Push
+- Committed April 15 work as `017fbec` (feat: wire up Facing Limpers and 3-Betting modules).
+- Pushed all 6 commits (`9da7897..017fbec`). Local and origin/master now in sync.
+- Also: added `.gitignore` entries for `build-log.txt`, `.commitmsg`, and `project-management/_backups/` to stop stashing local dev artifacts in the tree.
+
+### Critical follow-ups
+- **Card/explanation mismatch bug** (Chris reported again today, A♦3♦ with AA explanation on HAND 2 OF 5, SB vs BB 3-bet at 20bb). v2 architecture looked sound on re-review but the bug recurred. Planned: add production-visible instrumentation that logs full scenario object + auto-flags when `cards[0].rank !== handCode[0]` so next occurrence produces evidence instead of a screenshot.
+- **Timezone still UTC in Play mode.** April 14 fix only touched `progress-storage.ts` (Train). `play-storage.ts` still uses `new Date().toISOString().split('T')[0]` in 4 spots (lines 73, 94, 140, 162). `cloud-storage.ts` lines 83/107 and `play-scenario-generator.ts` line 513 also still UTC. Daily resets and streak math flip at 8pm ET because of this.
+- **Stats not refreshing on home page** (Chris: still #1 of 1, play count stuck). Suspect home `load()` only runs once on mount — doesn't refetch after daily challenge completion. Needs investigation.
+- **Admin activity visibility** — no per-user activity view; Chris can't see who's doing what.
 
 ### What's next
-- **Chris: run `npm run build` locally** to confirm TypeScript clean, then commit + push all changes from this session plus the 3 unpushed commits from April 14 (timezone fix, BTN 15bb widen, SB→BB limp fix).
 - **Still pending from April 14:** Run the Supabase migration (`supabase-flagged-hands.sql`) to enable hand flagging in production.
 - **Optional polish:**
   - Consider adding a separate drill launcher for "Offensive 3-Betting" (facing-open spots where 3-bet is the correct action) — requires generator changes.
