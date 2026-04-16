@@ -5,6 +5,19 @@
 
 import { supabase } from './supabase';
 
+// Timezone: streak dates must use Eastern Time (America/New_York) to match
+// progress-storage.ts, play-storage.ts, and the Supabase get_daily_stats function.
+// Using UTC breaks streak continuity for evening users (7 PM ET = next-day UTC).
+function easternTodayStr(): string {
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+}
+
+function easternYesterdayStr(): string {
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  return yesterday.toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+}
+
 // ============ ASSESSMENT RESULTS ============
 
 export async function saveAssessmentToCloud(
@@ -80,7 +93,7 @@ export async function getDrillHistory(userId: string) {
 // ============ STREAKS ============
 
 async function updateStreak(userId: string): Promise<void> {
-  const today = new Date().toISOString().split('T')[0];
+  const today = easternTodayStr();
 
   const { data: existing } = await supabase
     .from('user_streaks')
@@ -102,9 +115,7 @@ async function updateStreak(userId: string): Promise<void> {
   const lastDate = existing.last_activity_date;
   if (lastDate === today) return; // Already recorded today
 
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayStr = yesterday.toISOString().split('T')[0];
+  const yesterdayStr = easternYesterdayStr();
 
   let newStreak: number;
   if (lastDate === yesterdayStr) {

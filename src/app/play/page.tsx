@@ -81,6 +81,63 @@ function DailyHandsGame({ hands, iq, streak, rank, isBonus, userId, onComplete, 
   const [flagNote, setFlagNote] = useState('');
 
   const hand = frozenHands.current[handIdx];
+
+  // Integrity check: catch any card/handCode/explanation drift in production.
+  // This fires once per rendered hand and auto-flags to Supabase if the hand object
+  // reaching the UI doesn't match itself (cards vs handCode, or explanation vs handCode).
+  // Exists because Chris saw A♦3♦ shown alongside "AA at 20bb" explanation — we could
+  // not reproduce locally and the v2 generator validates every scenario, so the culprit
+  // is either a stale bundle/cache or a mutation after return. This captures real data.
+  const [integrityFail, setIntegrityFail] = useState<string | null>(null);
+  useEffect(() => {
+    if (!hand) return;
+    const r1 = hand.handCode[0];
+    const r2 = hand.handCode.length >= 2 ? hand.handCode[1] : r1;
+    const cardMismatch =
+      !hand.cards || hand.cards.length !== 2 ||
+      hand.cards[0]?.rank !== r1 ||
+      hand.cards[1]?.rank !== r2;
+    const tipMismatch =
+      !hand.tipRight?.includes(hand.handCode) ||
+      !hand.tipWrong?.includes(hand.handCode);
+
+    if (cardMismatch || tipMismatch) {
+      const reason = cardMismatch
+        ? `cards ${hand.cards?.[0]?.rank ?? '?'}${hand.cards?.[1]?.rank ?? '?'} vs handCode ${hand.handCode}`
+        : `explanation missing handCode "${hand.handCode}"`;
+      console.error('[PokerTrainer] SCENARIO INTEGRITY FAIL at render:', reason, {
+        id: hand.id,
+        handCode: hand.handCode,
+        position: hand.position,
+        stack: hand.stack,
+        situation: hand.situation,
+        cards: hand.cards,
+        tipRight: hand.tipRight,
+        tipWrong: hand.tipWrong,
+        handIdx,
+        userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
+        ts: new Date().toISOString(),
+      });
+      setIntegrityFail(reason);
+      // Auto-flag to Supabase so we have a reproducible record with real user context.
+      flagHand(userId, {
+        handCode: hand.handCode,
+        position: hand.position,
+        stack: hand.stack,
+        situation: hand.situation,
+        cards: hand.cards,
+        appAction: hand.choices?.[hand.correct] ?? '',
+        userAction: null,
+        explanation: `tipRight="${hand.tipRight}" | tipWrong="${hand.tipWrong}"`,
+        note: `AUTO_INTEGRITY_FAIL: ${reason} | handIdx=${handIdx} | id=${hand.id}`,
+        isBonus,
+      }).catch(() => { /* already logged by flagHand */ });
+    } else {
+      setIntegrityFail(null);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [handIdx]);
+
   if (!hand) return null;
   const isCorrect = selected === hand.correct;
 
@@ -170,6 +227,16 @@ function DailyHandsGame({ hands, iq, streak, rank, isBonus, userId, onComplete, 
           You&apos;re on the <strong style={{ color: '#10b981' }}>{hand.position}</strong> with <strong style={{ color: '#10b981' }}>{hand.stack}</strong>.
           <br />{hand.situation}
         </div>
+
+        {integrityFail && (
+          <div style={{
+            marginBottom: 12, padding: '10px 12px', borderRadius: 10,
+            background: '#fef2f2', border: '1.5px solid #fca5a5',
+            fontSize: 12, color: '#991b1b', fontWeight: 600,
+          }}>
+            This hand has a data mismatch ({integrityFail}). It has been auto-flagged for review.
+          </div>
+        )}
 
         <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginBottom: 20 }}>
           {hand.cards.map((c, i) => <PlayingCard key={i} rank={c.rank} suit={c.suit} delay={i * 0.1} />)}

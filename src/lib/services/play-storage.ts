@@ -5,6 +5,20 @@
 
 import { supabase } from './supabase';
 
+// Timezone: all daily/streak dates use Eastern Time (America/New_York) to match
+// progress-storage.ts, session-tracker.ts, and the Supabase get_daily_stats function.
+// Using UTC causes evening users' plays to log as tomorrow's date (7 PM ET = next-day
+// UTC), which breaks streak continuity and hides today's challenge from the user.
+function easternTodayStr(): string {
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+}
+
+function easternYesterdayStr(): string {
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  return yesterday.toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+}
+
 // ============ USER PREFERENCES ============
 
 /** Get the user's preferred mode ('play' or 'train') */
@@ -70,7 +84,7 @@ export interface DailyChallengeResult {
 
 /** Check if user already completed today's challenge */
 export async function getTodaysChallenge(userId: string): Promise<DailyChallengeResult | null> {
-  const today = new Date().toISOString().split('T')[0];
+  const today = easternTodayStr();
   const { data, error } = await supabase
     .from('daily_challenge_results')
     .select('*')
@@ -91,7 +105,7 @@ export async function saveDailyChallengeResult(
   iqBefore: number,
   iqAfter: number,
 ): Promise<DailyChallengeResult | null> {
-  const today = new Date().toISOString().split('T')[0];
+  const today = easternTodayStr();
 
   const { data, error } = await supabase
     .from('daily_challenge_results')
@@ -137,7 +151,7 @@ export async function getDailyChallengeHistory(userId: string, limit = 30): Prom
 // ============ STREAKS (reuses user_streaks table) ============
 
 async function updatePlayStreak(userId: string): Promise<void> {
-  const today = new Date().toISOString().split('T')[0];
+  const today = easternTodayStr();
 
   const { data: existing } = await supabase
     .from('user_streaks')
@@ -157,9 +171,7 @@ async function updatePlayStreak(userId: string): Promise<void> {
 
   if (existing.last_activity_date === today) return;
 
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayStr = yesterday.toISOString().split('T')[0];
+  const yesterdayStr = easternYesterdayStr();
 
   const newStreak = existing.last_activity_date === yesterdayStr
     ? existing.current_streak + 1

@@ -508,9 +508,13 @@ function validateScenario(s: PlayHandScenario): boolean {
 
 /**
  * Generate 5 daily hands — deterministic for all users on the same date.
+ *
+ * Date is computed in Eastern Time (America/New_York) so that the "daily hand"
+ * matches the day the user actually sees on their watch. Using UTC here caused
+ * evening users to get tomorrow's hands (7 PM ET = next-day UTC).
  */
 export function generateDailyHands(dateStr?: string): PlayHandScenario[] {
-  const today = dateStr ?? new Date().toISOString().split('T')[0];
+  const today = dateStr ?? new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
   const masterSeed = dateToSeed(today + '_pokertrain_v2');
   const rng = seededRng(masterSeed);
 
