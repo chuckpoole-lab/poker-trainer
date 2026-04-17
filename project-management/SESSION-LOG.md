@@ -4,6 +4,55 @@ This file is updated at the end of every work session. Read this first when star
 
 ---
 
+## Session: April 16, 2026
+**Focus:** Hide the new Facing Limpers and 3-Betting modules from production users
+
+### Context
+Chris flagged serious content problems in the modules wired up on April 15:
+- **Ranges were wrong for almost every hand** in both Facing Limpers and Facing 3-Bets.
+- **Action descriptions were off** — the explanation text didn't match the recommended action.
+- **Single-limper assumption** — the generator treats "facing a limp" as one opponent limped, but at bar poker tables one limper almost always means two or three limpers. Multi-way limp spots play differently and the current ranges don't account for them.
+
+Directive: do NOT remove the modules (the prototype content + generator code should stay so we can fix and re-enable). Hide them from everyone except Chris and Chuck until the content is rebuilt.
+
+### What was done
+Added an `adminMode` flag driven by `profile?.is_admin === true` to both the Play-mode and Drills-mode generators, and gated all UI entry points for the two modules behind the same flag. Admins (Chris + Chuck in the Supabase `profiles.is_admin` column) keep the full experience so they can reproduce the bugs in production. Non-admins and guests see none of it.
+
+**Files changed (7):**
+
+1. `src/lib/services/play-scenario-generator.ts` — `pickScenarioParams`, `generateDailyHands`, `generateBonusHand`, `generateBonusHands` all take a new `adminMode: boolean = false` parameter. When false, the dispatch collapses from 35/15/10/40 (facing_open / facing_limp / facing_3bet / unopened) to **47/53 facing_open/unopened**. Limp and 3-bet branches are skipped entirely.
+2. `src/lib/services/spot-generator.ts` — `generateDrillSpot` and `generateDrillSet` accept the same `adminMode` flag. The "mixed" drill roll follows the same 47/53 collapse for non-admins. Explicit drilling into `FACING_LIMPS` or `FACING_3BETS` still works regardless of the flag (UI is responsible for hiding those entry points).
+3. `src/app/play/page.tsx` — reads `profile?.is_admin` from `useAuth`, passes `adminMode` to `generateDailyHands` and `generateBonusHand`. Also conditionally strips the "Facing limpers" and "3-bet training" lines from the What's-New-on-Play-home list.
+4. `src/app/learn/page.tsx` — added `useAuth`; filters PHASES to remove `facing_limpers` and `three_betting` phases for non-admins. Constant `ADMIN_ONLY_PHASE_IDS` documents the gate.
+5. `src/app/train/page.tsx` — added `useAuth`; filters TRAIN_OPTIONS to remove "Facing Limpers" and "3-Bet Defense" launcher cards for non-admins. Constant `ADMIN_ONLY_TRAIN_TITLES` documents the gate.
+6. `src/app/drills/page.tsx` — added `useAuth`; filters MODULES to remove `mod_facing_limpers` and `mod_facing_3bets` from the "By Category" list for non-admins. Constant `ADMIN_ONLY_MODULE_IDS` documents the gate.
+7. `src/app/drills/session/page.tsx` — reads `profile?.is_admin`, passes `adminMode` to `generateDrillSet` on initial render and restart.
+
+### Decisions made
+- **Gate in the data layer, not just the UI.** Only hiding the launcher cards would have left the 25% limp/3-bet share of daily and bonus hands visible to everyone. Chris's reports describe exactly that content, so the fix has to drop it from the dispatch.
+- **Admin = DB flag, not hardcoded email.** The app already has `profiles.is_admin` with a toggle on the admin page. Using it avoids shipping email allowlists in source.
+- **Direct drill URLs still work for admins.** If an admin navigates to `/drills/session?module=mod_facing_limpers` directly, the session runs — important for the bug-reproduction workflow. Non-admins would never see that link surfaced, but if they deep-linked, they'd still reach the module (explicit `preferredCategory` bypasses the mixed-dispatch filter). We chose that over hard-blocking the route because the content itself isn't dangerous, just wrong — and the modules are coming back.
+- **No in-app banner.** The bugs are tracked in WORK-PLAN.md Priority 1e; admins know what they're testing.
+
+### Validation
+- `npm run build` clean. 24 routes generated (including `/learn/facing-limpers` and `/learn/three-betting` — the pages still exist for admins to view). TypeScript 4.2s, Turbopack compile 3.2s, static generation 482ms.
+- Manual reasoning pass on the dispatch: non-admin `pickScenarioParams` is now a two-branch function that can only return `facing_open` or `unopened`. `pickHand` and `buildScenario` were already correct for those two types (they've been in production for weeks). No way for a limp/3-bet scenario to leak into a non-admin daily or bonus hand.
+
+### What's next
+- **Deep-dive on the three reported problems.** Before re-enabling, we need to audit:
+  1. Range correctness for every limp matchup (24 × 4 stacks = 96 range cells in FACING_LIMP_RAW) and every 3-bet matchup (36 × 4 = 144 cells in FACING_3BET_RAW). Cross-check against a solver or a trusted external reference.
+  2. Action description accuracy — walk through `explainIsolateLimper`, `explainLimpBehind`, `explainJamVsLimp`, `explainFoldVsLimp`, `explainCallVs3Bet`, `explainFoldVs3Bet`, `explain4BetJam` and verify each says what the action actually does.
+  3. Multi-way limp modeling — the scenario generator currently only creates single-limper spots. For bar poker we need 2- and 3-limper variants with appropriately adjusted ranges (iso-raise gets tighter, overlimp gets wider for suited broadways, jam ranges shift).
+- **Once fixed, re-enable.** Remove `ADMIN_ONLY_*` filters and revert the dispatch split in the two generator files.
+- **Keep the `flagged_hands` instrumentation running.** The A♦3♦-vs-AA bug could still recur in the facing_open / unopened paths; `AUTO_INTEGRITY_FAIL:` rows in Supabase are the evidence trail.
+
+### End-of-day sync (closed 2026-04-16)
+- **Repo state:** 1 commit ahead of origin/master (this session's change). Ready to push; will push after Chris reviews.
+- **Build:** clean on last run. No stuck processes.
+- **Deferred items:** none carrying over. All follow-up lives in WORK-PLAN.md Priority 1e.
+
+---
+
 ## Session: April 15, 2026
 **Focus:** Wire up Facing Limpers and 3-Betting modules so the What's New tab isn't lying
 

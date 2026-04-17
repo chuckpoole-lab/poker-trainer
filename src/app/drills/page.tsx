@@ -3,15 +3,23 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { MODULES } from '@/lib/data/categories';
+import { useAuth } from '@/lib/services/auth-context';
 import { Card, Button, Icon, Badge } from '@/components/ui';
 
 const DRILL_SIZES = [10, 15, 25, 50];
 const DEFAULT_DRILL_SIZE = 15;
 
+// Drill modules hidden from the "By Category" list for non-admins while the
+// content is rebuilt. See WORK-PLAN.md Priority 1e (2026-04-16).
+const ADMIN_ONLY_MODULE_IDS = new Set(['mod_facing_limpers', 'mod_facing_3bets']);
+
 export default function DrillsPage() {
   const router = useRouter();
+  const { profile } = useAuth();
+  const isAdmin = profile?.is_admin === true;
   const sortedModules = [...MODULES]
     .filter(m => m.spotPoolSize > 0)
+    .filter(m => isAdmin || !ADMIN_ONLY_MODULE_IDS.has(m.id))
     .sort((a, b) => a.curriculumOrder - b.curriculumOrder);
 
   const [drillSize, setDrillSize] = useState(DEFAULT_DRILL_SIZE);

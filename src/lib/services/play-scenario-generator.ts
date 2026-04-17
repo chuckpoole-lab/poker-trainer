@@ -428,8 +428,24 @@ function pickHand(
   return pickRng(ALL_HANDS, rng).code;
 }
 
-/** Generate a single raw scenario, returning only primitives. */
-function pickScenarioParams(rng: () => number): {
+/** Generate a single raw scenario, returning only primitives.
+ *
+ * @param adminMode When true, enables the full 35/15/10/40 dispatch across
+ *   facing_open / facing_limp / facing_3bet / unopened. When false (default,
+ *   production users), facing_limp and facing_3bet are stripped — the
+ *   distribution collapses to ~47% facing_open / 53% unopened.
+ *
+ *   Rationale (2026-04-16): the Facing Limpers and 3-Betting modules have
+ *   known bugs — wrong ranges on most hands, wrong action descriptions,
+ *   and the generator assumes single-limper when multi-way limps are the
+ *   actual norm at bar poker. Hiding them from daily/bonus play until the
+ *   content is rebuilt. Admins (Chris + Chuck) keep full dispatch so they
+ *   can reproduce and debug. See WORK-PLAN.md Priority 1e.
+ */
+function pickScenarioParams(
+  rng: () => number,
+  adminMode: boolean = false,
+): {
   spotType: string;
   heroKey: string;
   stackBb: number;
@@ -437,31 +453,42 @@ function pickScenarioParams(rng: () => number): {
 } {
   const roll = rng();
 
-  if (roll < 0.35) {
-    // facing_open
+  if (adminMode) {
+    // Admin dispatch: full 35/15/10/40 mix including experimental limp/3-bet modules
+    if (roll < 0.35) {
+      const key = pickRng(FACING_OPEN_KEYS, rng);
+      const parts = key.split('_');
+      if (parts.length !== 3) return pickScenarioParams(rng, adminMode);
+      return { spotType: 'facing_open', heroKey: parts[1], stackBb: parseInt(parts[2]), opponentKey: parts[0] };
+    }
+    if (roll < 0.50) {
+      const key = pickRng(FACING_LIMP_KEYS, rng);
+      const parts = key.split('_');
+      if (parts.length !== 3) return pickScenarioParams(rng, adminMode);
+      return { spotType: 'facing_limp', heroKey: parts[1], stackBb: parseInt(parts[2]), opponentKey: parts[0] };
+    }
+    if (roll < 0.60) {
+      const key = pickRng(FACING_3BET_KEYS, rng);
+      const parts = key.split('_');
+      if (parts.length !== 3) return pickScenarioParams(rng, adminMode);
+      return { spotType: 'facing_3bet', heroKey: parts[0], stackBb: parseInt(parts[2]), opponentKey: parts[1] };
+    }
+    return {
+      spotType: 'unopened',
+      heroKey: pickRng(OPENING_POSITIONS, rng),
+      stackBb: pickRng(STACK_DEPTHS, rng),
+      opponentKey: '',
+    };
+  }
+
+  // Non-admin (production) dispatch: 47/53 facing_open/unopened. Limp and 3-bet
+  // modules hidden until range/action/multi-limper bugs are resolved.
+  if (roll < 0.47) {
     const key = pickRng(FACING_OPEN_KEYS, rng);
     const parts = key.split('_');
-    if (parts.length !== 3) return pickScenarioParams(rng); // retry
+    if (parts.length !== 3) return pickScenarioParams(rng, adminMode);
     return { spotType: 'facing_open', heroKey: parts[1], stackBb: parseInt(parts[2]), opponentKey: parts[0] };
   }
-
-  if (roll < 0.50) {
-    // facing_limp
-    const key = pickRng(FACING_LIMP_KEYS, rng);
-    const parts = key.split('_');
-    if (parts.length !== 3) return pickScenarioParams(rng);
-    return { spotType: 'facing_limp', heroKey: parts[1], stackBb: parseInt(parts[2]), opponentKey: parts[0] };
-  }
-
-  if (roll < 0.60) {
-    // facing_3bet
-    const key = pickRng(FACING_3BET_KEYS, rng);
-    const parts = key.split('_');
-    if (parts.length !== 3) return pickScenarioParams(rng);
-    return { spotType: 'facing_3bet', heroKey: parts[0], stackBb: parseInt(parts[2]), opponentKey: parts[1] };
-  }
-
-  // unopened
   return {
     spotType: 'unopened',
     heroKey: pickRng(OPENING_POSITIONS, rng),
@@ -513,7 +540,7 @@ function validateScenario(s: PlayHandScenario): boolean {
  * matches the day the user actually sees on their watch. Using UTC here caused
  * evening users to get tomorrow's hands (7 PM ET = next-day UTC).
  */
-export function generateDailyHands(dateStr?: string): PlayHandScenario[] {
+export function generateDailyHands(dateStr?: string, adminMode: boolean = false): PlayHandScenario[] {
   const today = dateStr ?? new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
   const masterSeed = dateToSeed(today + '_pokertrain_v2');
   const rng = seededRng(masterSeed);
@@ -528,7 +555,7 @@ export function generateDailyHands(dateStr?: string): PlayHandScenario[] {
     // Each hand gets its own sub-seed so picking a scenario doesn't bleed into the next
     const handRng = seededRng(masterSeed ^ (attempts * 0x9e3779b9));
 
-    const params = pickScenarioParams(handRng);
+    const params = pickScenarioParams(handRng, adminMode);
     const handCode = pickHand(handRng, params.spotType, params.heroKey, params.stackBb, params.opponentKey);
     const dedupeKey = `${handCode}_${params.heroKey}_${params.spotType}`;
 
@@ -556,14 +583,13 @@ export function generateDailyHands(dateStr?: string): PlayHandScenario[] {
 /**
  * Generate a single random bonus hand.
  */
-export function generateBonusHand(): PlayHandScenario {
-  const rng = () => Math.random();
+export function generateBonusHand(adminMode: boolean = false): PlayHandScenario {
   let attempts = 0;
 
   while (attempts < 20) {
     attempts++;
     const handRng = seededRng(Math.floor(Math.random() * 0xffffffff));
-    const params = pickScenarioParams(handRng);
+    const params = pickScenarioParams(handRng, adminMode);
     const handCode = pickHand(handRng, params.spotType, params.heroKey, params.stackBb, params.opponentKey);
     const id = `bonus_${Date.now()}_${attempts}`;
     const scenario = buildScenario(id, handCode, params.heroKey, params.stackBb, params.spotType, params.opponentKey);
@@ -580,14 +606,14 @@ export function generateBonusHand(): PlayHandScenario {
 /**
  * Generate a batch of bonus hands.
  */
-export function generateBonusHands(count: number): PlayHandScenario[] {
+export function generateBonusHands(count: number, adminMode: boolean = false): PlayHandScenario[] {
   const hands: PlayHandScenario[] = [];
   const usedKeys = new Set<string>();
   let attempts = 0;
 
   while (hands.length < count && attempts < count * 10) {
     attempts++;
-    const scenario = generateBonusHand();
+    const scenario = generateBonusHand(adminMode);
     const key = `${scenario.handCode}_${scenario.position}`;
     if (usedKeys.has(key)) continue;
     usedKeys.add(key);

@@ -510,10 +510,15 @@ export default function PlayPage() {
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
 
-  // Generate daily hands on mount
+  // Generate daily hands on mount.
+  // Admin users (Chris + Chuck) get the full 35/15/10/40 dispatch including
+  // experimental facing-limp and facing-3bet modules so they can reproduce
+  // bugs. Non-admins get 47/53 facing_open/unopened while the new modules
+  // are hidden from production. See WORK-PLAN.md Priority 1e.
+  const adminMode = profile?.is_admin === true;
   useEffect(() => {
-    setDailyHands(generateDailyHands());
-  }, []);
+    setDailyHands(generateDailyHands(undefined, adminMode));
+  }, [adminMode]);
 
   // Load user data on mount
   useEffect(() => {
@@ -613,12 +618,12 @@ export default function PlayPage() {
 
   // Handle "Keep Playing" — generate 5 bonus hands
   const handleKeepPlaying = useCallback(() => {
-    const bonus = Array.from({ length: 5 }, () => generateBonusHand());
+    const bonus = Array.from({ length: 5 }, () => generateBonusHand(adminMode));
     setBonusHands(bonus);
     setBonusCorrect(0);
     setBonusTotal(0);
     setScreen('bonus');
-  }, []);
+  }, [adminMode]);
 
   // Track bonus hand results
   const handleBonusResult = useCallback((correct: boolean) => {
@@ -916,7 +921,19 @@ export default function PlayPage() {
         </div>
 
         <div style={{ fontSize: 12, fontWeight: 700, color: '#10b981', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>New</div>
-        {['Facing limpers \u2014 isolate, limp behind, or jam over weak limps', '3-bet training \u2014 know when to call, fold, or 4-bet jam', 'Challenge any hand \u2014 flag recommendations you disagree with', 'Daily Hands challenge with Poker IQ scoring', 'Unlimited bonus rounds after daily challenge', 'Position-aware coaching tips on every hand'].map(f => (
+        {/* Facing Limpers and 3-Bet Training are hidden from the "What's New" list
+            for non-admins while those modules are rebuilt (see WORK-PLAN.md 1e).
+            Admins keep them visible so they can test in production. */}
+        {[
+          ...(adminMode ? [
+            'Facing limpers \u2014 isolate, limp behind, or jam over weak limps',
+            '3-bet training \u2014 know when to call, fold, or 4-bet jam',
+          ] : []),
+          'Challenge any hand \u2014 flag recommendations you disagree with',
+          'Daily Hands challenge with Poker IQ scoring',
+          'Unlimited bonus rounds after daily challenge',
+          'Position-aware coaching tips on every hand',
+        ].map(f => (
           <div key={f} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', fontSize: 13, color: 'var(--on-surface, #1a1a1a)' }}>
             <span style={{ color: '#10b981', fontSize: 14 }}>{'\u2713'}</span> {f}
           </div>

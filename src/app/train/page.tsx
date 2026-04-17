@@ -1,6 +1,12 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/services/auth-context';
+
+// Launcher titles hidden from non-admins while the underlying modules are
+// rebuilt (wrong ranges, wrong action descriptions, single-limper assumption).
+// See WORK-PLAN.md Priority 1e (2026-04-16).
+const ADMIN_ONLY_TRAIN_TITLES = new Set(['Facing Limpers', '3-Bet Defense']);
 
 type TagType = 'time' | 'rec' | 'new';
 const TAG_STYLES: Record<TagType, { bg: string; color: string }> = {
@@ -86,6 +92,11 @@ const TRAIN_OPTIONS = [
 
 export default function TrainPage() {
   const router = useRouter();
+  const { profile } = useAuth();
+  const isAdmin = profile?.is_admin === true;
+  const visibleOptions = isAdmin
+    ? TRAIN_OPTIONS
+    : TRAIN_OPTIONS.filter(o => !ADMIN_ONLY_TRAIN_TITLES.has(o.title));
 
   return (
     <div style={{
@@ -112,7 +123,7 @@ export default function TrainPage() {
       </p>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {TRAIN_OPTIONS.map((opt) => (
+        {visibleOptions.map((opt) => (
           <button
             key={opt.title}
             onClick={() => router.push(opt.href)}

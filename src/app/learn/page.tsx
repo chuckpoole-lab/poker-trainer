@@ -1,6 +1,11 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/services/auth-context';
+
+// Phases whose content is hidden from non-admins while the modules are rebuilt.
+// See WORK-PLAN.md Priority 1e (2026-04-16).
+const ADMIN_ONLY_PHASE_IDS = new Set(['facing_limpers', 'three_betting']);
 
 type Phase = {
   id: string;
@@ -96,6 +101,11 @@ const PHASES: Phase[] = [
 
 export default function LearnPage() {
   const router = useRouter();
+  const { profile } = useAuth();
+  const isAdmin = profile?.is_admin === true;
+  const visiblePhases = isAdmin
+    ? PHASES
+    : PHASES.filter(p => !ADMIN_ONLY_PHASE_IDS.has(p.id));
 
   return (
     <div style={{ padding: '20px 16px 100px', maxWidth: 480, margin: '0 auto' }}>
@@ -109,7 +119,7 @@ export default function LearnPage() {
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {PHASES.map((phase, idx) => (
+        {visiblePhases.map((phase) => (
           <button
             key={phase.id}
             onClick={() => router.push(phase.href)}

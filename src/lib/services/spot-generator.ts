@@ -479,7 +479,20 @@ function parseFacing3BetKey(key: string): { hero: Position; threeBettor: Positio
 
 // ======= PUBLIC API =======
 
-export function generateDrillSpot(preferredCategory?: LeakCategoryId): GeneratedSpot {
+/**
+ * Generate a single drill spot.
+ *
+ * @param preferredCategory Optional leak category. If provided, always returns
+ *   a spot from that category — explicit user choice overrides production gating.
+ * @param adminMode When true, the mixed distribution includes facing-limp and
+ *   facing-3bet spots. When false (default, production users), limp and 3-bet
+ *   are stripped from the mixed roll — users only see facing_open + unopened.
+ *   Explicit drilling into a hidden category (e.g., by passing
+ *   `LeakCategoryId.FACING_LIMPS`) still works regardless of adminMode; the
+ *   UI is responsible for hiding the entry points from non-admins.
+ *   See WORK-PLAN.md Priority 1e for the bugs being tracked.
+ */
+export function generateDrillSpot(preferredCategory?: LeakCategoryId, adminMode: boolean = false): GeneratedSpot {
   // Facing opens now drills facing-open only (limpers have their own category)
   if (preferredCategory === LeakCategoryId.FACING_OPENS) {
     return generateFacingOpenSpot();
@@ -500,28 +513,29 @@ export function generateDrillSpot(preferredCategory?: LeakCategoryId): Generated
     return generateUnopenedSpot(preferredCategory);
   }
 
-  // Mixed distribution: 35% facing open, 15% facing limp, 10% facing 3-bet, 40% unopened
   const roll = Math.random();
-  if (roll < 0.35) {
-    return generateFacingOpenSpot();
+
+  if (adminMode) {
+    // Admin mixed distribution: 35% facing open / 15% facing limp / 10% facing 3-bet / 40% unopened
+    if (roll < 0.35) return generateFacingOpenSpot();
+    if (roll < 0.50) return generateFacingLimpSpot();
+    if (roll < 0.60) return generateFacing3BetSpot();
+    return generateUnopenedSpot();
   }
-  if (roll < 0.50) {
-    return generateFacingLimpSpot();
-  }
-  if (roll < 0.60) {
-    return generateFacing3BetSpot();
-  }
+
+  // Non-admin mixed: 47% facing_open / 53% unopened (limp + 3-bet hidden)
+  if (roll < 0.47) return generateFacingOpenSpot();
   return generateUnopenedSpot();
 }
 
-export function generateDrillSet(count: number, preferredCategory?: LeakCategoryId): GeneratedSpot[] {
+export function generateDrillSet(count: number, preferredCategory?: LeakCategoryId, adminMode: boolean = false): GeneratedSpot[] {
   const spots: GeneratedSpot[] = [];
   const usedHands = new Set<string>();
 
   let attempts = 0;
   while (spots.length < count && attempts < count * 5) {
     attempts++;
-    const generated = generateDrillSpot(preferredCategory);
+    const generated = generateDrillSpot(preferredCategory, adminMode);
 
     // Avoid duplicate hands in the same set
     const key = `${generated.spot.handCode}_${generated.template.position}_${generated.template.stackDepthBb}`;

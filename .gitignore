@@ -50,3 +50,4 @@ next-env.d.ts
 build-log.txt
 .commitmsg
 project-management/_backups/
+build_log.txt

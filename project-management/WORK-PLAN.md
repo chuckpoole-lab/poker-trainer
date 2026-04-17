@@ -1,13 +1,13 @@
 # Poker Trainer — Work Plan & Priorities
-## Updated April 15, 2026
+## Updated April 16, 2026
 
 ---
 
 ## NEXT SESSION: Pick Up Here
 
-1. **Check `flagged_hands` for `AUTO_INTEGRITY_FAIL:` rows** — instrumentation was shipped 2026-04-15 and the Supabase table is now live. The next time the A♦3♦-vs-AA mismatch occurs, a row will land with full scenario context (cards, handCode, explanation, position, stack, situation, handIdx, user_id). Open Supabase → Table Editor → `flagged_hands` and filter `note ilike 'AUTO_INTEGRITY_FAIL%'`. Consider a tiny admin view for these rows so Chris doesn't have to click into Supabase.
-2. **Test new modules on live site** — Verify facing-limp and facing-3bet scenarios appear in daily/bonus hands on Vercel. Confirm the two new Learn pages render and drill links work.
-3. **BTN 15bb range fix** — Currently only 24% playable, should be ~35-40%. Update `OPENING_RANGES_RAW` BTN 15bb entry.
+1. **Rebuild Facing Limpers and 3-Betting modules (Priority 1e).** Modules are hidden from non-admins as of 2026-04-16. Three known problems to fix before re-enabling: wrong ranges on most hands, wrong action descriptions, and single-limper assumption (bar poker is multi-way). See Priority 1e below for the full punch list.
+2. **Check `flagged_hands` for `AUTO_INTEGRITY_FAIL:` rows** — instrumentation was shipped 2026-04-15 and the Supabase table is now live. Open Supabase → Table Editor → `flagged_hands` and filter `note ilike 'AUTO_INTEGRITY_FAIL%'`. Consider a tiny admin view for these rows so Chris doesn't have to click into Supabase.
+3. **BTN 15bb range fix** — Currently only 24% playable, should be ~35-40%. Update `OPENING_RANGES_RAW` BTN 15bb entry. (Partially addressed April 14; verify on live.)
 4. **Review with Chuck** — Discuss UX direction from meeting, get sign-off on nav/color changes.
 5. **Start implementing warm color palette** — CSS variables / design tokens swap (cream background, felt green, gold accents).
 6. **Build the 5-tab navigation** — replace current 8-tab layout, wire up path-dependent Home screen.
@@ -57,6 +57,46 @@ Current 8-tab nav is confusing (Home = Play duplicate, too many choices). New st
 - [ ] Show poker table with position badges on ALL hand decision screens (Daily Hands, Assessment, Drills)
 - [ ] Currently only Assessment and Drills show the table — Daily Hands and Learn do not
 - [ ] The table is the best visual in the app. Use it everywhere.
+
+### 1e. Facing Limpers + 3-Betting: Deep-dive before re-enabling (HIDDEN IN PRODUCTION)
+Chris flagged 2026-04-16 that the modules wired up the day before had systemic content problems. Modules are now hidden from every non-admin user. Entry points still visible to admins (Chris + Chuck) so the bugs can be reproduced in production. DO NOT remove the code — the prototype content, range tables, explanation templates, generator branches, drill modules, Learn pages, Train launchers, and Play-mode dispatch path all remain in place, just gated behind `profile?.is_admin === true`.
+
+**What's hidden for non-admins (as of 2026-04-16):**
+- Learn: Phase 3a "Facing Limpers" and Phase 3b "3-Betting Strategy" cards on `/learn`
+- Train: "Facing Limpers" and "3-Bet Defense" launcher cards on `/train`
+- Drills: `mod_facing_limpers` and `mod_facing_3bets` in the "By Category" list on `/drills`
+- Play home: "Facing limpers..." and "3-bet training..." bullets in the What's-New panel
+- Daily/bonus hand dispatch: limp and 3-bet branches skipped (dispatch collapses from 35/15/10/40 to 47/53 facing_open/unopened)
+- Drills "Quick Mix" dispatch: same 47/53 collapse for non-admins
+
+**Known problems to fix before re-enabling:**
+
+**A. Ranges wrong on almost every hand**
+- [ ] Audit every cell in `FACING_LIMP_RAW` — 24 matchups × 4 stack depths = 96 range definitions in `src/lib/data/range-tables.ts`. Cross-check each against a trusted solver or reference (Preflop Pro's gto-engine can generate these for comparison).
+- [ ] Audit every cell in `FACING_3BET_RAW` — 36 matchups × 4 stack depths = 144 range definitions in the same file. Same cross-check approach.
+- [ ] Build a validation script (similar to `scripts/validate-scenarios.mjs`) that exercises every matchup and flags unexpected actions.
+- [ ] Particular hands to recheck first based on Chris's recall: suited broadways vs. limpers, small pairs vs. limpers, blockers vs. 3-bettors.
+
+**B. Action descriptions off**
+- [ ] Walk through each explanation function in `src/lib/data/explanation-templates.ts`: `explainIsolateLimper`, `explainLimpBehind`, `explainJamVsLimp`, `explainFoldVsLimp`, `explainCallVs3Bet`, `explainFoldVs3Bet`, `explain4BetJam`.
+- [ ] Verify the output text for each actually describes the action the app is recommending — not a sibling action.
+- [ ] Check that hand-code substitution into the template produces sentences that read naturally (no "Raise your 22 to isolate" when 22 isn't in the iso range).
+- [ ] Confirm the explanation references the right opponent (limper position when facing limps, 3-bettor position when facing 3-bets).
+
+**C. Single-limper assumption vs. bar-poker reality (multi-way limps)**
+- [ ] Current generator creates spots where ONE opponent limps. At bar poker, where there's one limper there are almost always 2-3 limpers. The correct strategy changes materially with multi-way pots — iso-raise ranges tighten (more fold equity needed), overlimp ranges widen for hands that flop well multiway (suited connectors, small pairs), jam ranges shift because stack-off equity falls.
+- [ ] Decide on scenario representation: add a `limperCount: 1 | 2 | 3` field to `FacingLimpScenario` in `src/lib/services/spot-generator.ts`, or create separate `facing_limp_multiway` spot type.
+- [ ] Build multi-way range tables (likely 2-limper and 3+ limper variants) for each position/stack combination.
+- [ ] Update `explainIsolateLimper` / `explainLimpBehind` / `explainJamVsLimp` / `explainFoldVsLimp` to reference the actual number of limpers and the multi-way dynamics.
+- [ ] Rebalance the dispatch so multi-way scenarios appear more often than single-limper ones (probably 60% multi-way / 40% heads-up).
+
+**D. Re-enablement checklist**
+- [ ] All A/B/C items complete and validated.
+- [ ] Chuck reviews 20+ randomly-drawn limp and 3-bet spots for correctness.
+- [ ] Chris plays through 2-3 full daily-hand sets on an admin account with full dispatch enabled, no flagged hands.
+- [ ] Remove the `ADMIN_ONLY_*` filter constants in `src/app/learn/page.tsx`, `src/app/train/page.tsx`, `src/app/drills/page.tsx`.
+- [ ] Revert the non-admin dispatch branches in `src/lib/services/play-scenario-generator.ts` (`pickScenarioParams`) and `src/lib/services/spot-generator.ts` (`generateDrillSpot`) so everyone gets the full 35/15/10/40 mix.
+- [ ] Restore the "Facing limpers" and "3-bet training" bullets in the What's-New panel on `src/app/play/page.tsx`.
 
 ---
 
@@ -288,5 +328,5 @@ Integrating this into the Poker Trainer as a `/reference` module makes strategic
 
 ---
 
-*Updated: April 15, 2026 — migration applied, Play-mode fixes shipped, session closed clean*
+*Updated: April 16, 2026 — Facing Limpers + 3-Betting hidden from production users pending content rebuild (Priority 1e).*
 *Next review: after next Chris+Chuck meeting*

@@ -19,7 +19,8 @@ const MAX_DRILL_SIZE = 100;
 function DrillSessionContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  const adminMode = profile?.is_admin === true;
   const moduleId = searchParams.get('module') ?? 'mixed';
 
   const drillSize = useMemo(() => {
@@ -51,7 +52,7 @@ function DrillSessionContent() {
   }, [moduleId]);
 
   const [drillSet, setDrillSet] = useState<GeneratedSpot[]>(() =>
-    generateDrillSet(drillSize, preferredCategory)
+    generateDrillSet(drillSize, preferredCategory, adminMode)
   );
 
   const [idx, setIdx] = useState(0);
@@ -103,7 +104,7 @@ function DrillSessionContent() {
   }, [idx, drillSet.length]);
 
   const handleRestart = useCallback(() => {
-    setDrillSet(generateDrillSet(drillSize, preferredCategory));
+    setDrillSet(generateDrillSet(drillSize, preferredCategory, adminMode));
     setIdx(0);
     setCorrect(0);
     setTotal(0);
@@ -111,7 +112,7 @@ function DrillSessionContent() {
     setShowFeedback(false);
     setLastResult(null);
     savedRef.current = false;
-  }, [drillSize, preferredCategory]);
+  }, [drillSize, preferredCategory, adminMode]);
 
   /* ── Drill complete screen ── */
   if (done || !spot || !template) {
