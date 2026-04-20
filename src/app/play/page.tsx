@@ -83,28 +83,74 @@ function DailyHandsGame({ hands, iq, streak, rank, isBonus, userId, onComplete, 
   const hand = frozenHands.current[handIdx];
 
   // Integrity check: catch any card/handCode/explanation drift in production.
-  // This fires once per rendered hand and auto-flags to Supabase if the hand object
-  // reaching the UI doesn't match itself (cards vs handCode, or explanation vs handCode).
-  // Exists because Chris saw A♦3♦ shown alongside "AA at 20bb" explanation — we could
-  // not reproduce locally and the v2 generator validates every scenario, so the culprit
-  // is either a stale bundle/cache or a mutation after return. This captures real data.
+  // Two layers:
+  //  (1) DATA-LEVEL check (synchronous): does the hand object passed to the UI
+  //      agree with itself? cards-vs-handCode (ranks + suit pattern), explanation
+  //      vs handCode, choices array present, correct index valid.
+  //  (2) DOM-LEVEL check (post-paint via rAF): does what the browser actually
+  //      painted match the hand object? Reads textContent from refs on the
+  //      situation block and cards block and verifies it contains the expected
+  //      position, stack, and both card ranks. Catches desyncs that only show
+  //      up on the screen (iOS Safari bfcache, service-worker stale DOM, React
+  //      reconciliation bugs) — these are invisible to the data-level check.
+  //
+  // Both layers auto-flag to Supabase with AUTO_INTEGRITY_FAIL or
+  // AUTO_DOM_INTEGRITY_FAIL notes so we can correlate with deploys.
   const [integrityFail, setIntegrityFail] = useState<string | null>(null);
+  const situationRef = useRef<HTMLDivElement | null>(null);
+  const cardsContainerRef = useRef<HTMLDivElement | null>(null);
+
+  // Build ID for correlating flags with specific deploys. Vercel auto-populates
+  // NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA at build time.
+  const buildId =
+    process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ??
+    process.env.NEXT_PUBLIC_BUILD_ID ??
+    'dev';
+
   useEffect(() => {
     if (!hand) return;
+
+    // ── (1) DATA-LEVEL CHECK ─────────────────────────────────────────────
     const r1 = hand.handCode[0];
     const r2 = hand.handCode.length >= 2 ? hand.handCode[1] : r1;
-    const cardMismatch =
-      !hand.cards || hand.cards.length !== 2 ||
+    const codeTail = hand.handCode.length >= 3 ? hand.handCode[2] : '';
+    const isSuitedCode = codeTail === 's';
+    const isOffsuitCode = codeTail === 'o';
+
+    const cardsAreTwo = !!hand.cards && hand.cards.length === 2;
+    const rankMismatch =
+      !cardsAreTwo ||
       hand.cards[0]?.rank !== r1 ||
       hand.cards[1]?.rank !== r2;
+
+    // Suit pattern: suited codes must share a suit, offsuit codes must not.
+    const bothSuits = cardsAreTwo ? [hand.cards[0]?.suit, hand.cards[1]?.suit] : [];
+    const suitPatternMismatch =
+      cardsAreTwo && (
+        (isSuitedCode && bothSuits[0] !== bothSuits[1]) ||
+        (isOffsuitCode && bothSuits[0] === bothSuits[1])
+      );
+
     const tipMismatch =
       !hand.tipRight?.includes(hand.handCode) ||
       !hand.tipWrong?.includes(hand.handCode);
 
-    if (cardMismatch || tipMismatch) {
-      const reason = cardMismatch
-        ? `cards ${hand.cards?.[0]?.rank ?? '?'}${hand.cards?.[1]?.rank ?? '?'} vs handCode ${hand.handCode}`
-        : `explanation missing handCode "${hand.handCode}"`;
+    const choicesInvalid =
+      !Array.isArray(hand.choices) ||
+      hand.choices.length === 0 ||
+      typeof hand.correct !== 'number' ||
+      hand.correct < 0 ||
+      hand.correct >= (hand.choices?.length ?? 0) ||
+      !hand.choices[hand.correct];
+
+    const dataReasons: string[] = [];
+    if (rankMismatch) dataReasons.push(`cards ${hand.cards?.[0]?.rank ?? '?'}${hand.cards?.[1]?.rank ?? '?'} vs handCode ${hand.handCode}`);
+    if (suitPatternMismatch) dataReasons.push(`suit pattern mismatch: ${hand.handCode} but cards are ${bothSuits.join('/')}`);
+    if (tipMismatch) dataReasons.push(`explanation missing handCode "${hand.handCode}"`);
+    if (choicesInvalid) dataReasons.push(`choices invalid: len=${hand.choices?.length}, correct=${hand.correct}`);
+
+    if (dataReasons.length > 0) {
+      const reason = dataReasons.join(' | ');
       console.error('[PokerTrainer] SCENARIO INTEGRITY FAIL at render:', reason, {
         id: hand.id,
         handCode: hand.handCode,
@@ -115,11 +161,11 @@ function DailyHandsGame({ hands, iq, streak, rank, isBonus, userId, onComplete, 
         tipRight: hand.tipRight,
         tipWrong: hand.tipWrong,
         handIdx,
+        buildId,
         userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
         ts: new Date().toISOString(),
       });
       setIntegrityFail(reason);
-      // Auto-flag to Supabase so we have a reproducible record with real user context.
       flagHand(userId, {
         handCode: hand.handCode,
         position: hand.position,
@@ -129,14 +175,79 @@ function DailyHandsGame({ hands, iq, streak, rank, isBonus, userId, onComplete, 
         appAction: hand.choices?.[hand.correct] ?? '',
         userAction: null,
         explanation: `tipRight="${hand.tipRight}" | tipWrong="${hand.tipWrong}"`,
-        note: `AUTO_INTEGRITY_FAIL: ${reason} | handIdx=${handIdx} | id=${hand.id}`,
+        note: `AUTO_INTEGRITY_FAIL: ${reason} | handIdx=${handIdx} | id=${hand.id} | build=${buildId}`,
         isBonus,
-      }).catch(() => { /* already logged by flagHand */ });
+      }).catch(() => { /* logged by flagHand */ });
     } else {
       setIntegrityFail(null);
     }
+
+    // ── (2) DOM-LEVEL CHECK (post-paint) ────────────────────────────────
+    // rAF ensures DOM has been painted for the new hand before we read it.
+    // Double-rAF on the nested call is belt-and-suspenders for iOS Safari which
+    // occasionally commits style changes on the second frame.
+    let rafA = 0;
+    let rafB = 0;
+    rafA = requestAnimationFrame(() => {
+      rafB = requestAnimationFrame(() => {
+        const situationText = situationRef.current?.textContent || '';
+        const cardsText = cardsContainerRef.current?.textContent || '';
+        const domReasons: string[] = [];
+
+        // Expected rendered tokens, derived entirely from the hand object.
+        const wantPos = hand.position || '';
+        const wantStack = hand.stack || '';
+        const wantR1 = r1;
+        const wantR2 = r2;
+
+        if (wantPos && !situationText.includes(wantPos)) {
+          domReasons.push(`DOM situation "${situationText.slice(0, 80)}" missing position "${wantPos}"`);
+        }
+        if (wantStack && !situationText.includes(wantStack)) {
+          domReasons.push(`DOM situation "${situationText.slice(0, 80)}" missing stack "${wantStack}"`);
+        }
+        // For pairs, wantR1 === wantR2, so include-check is fine either way.
+        if (wantR1 && !cardsText.includes(wantR1)) {
+          domReasons.push(`DOM cards "${cardsText}" missing rank "${wantR1}" (expected ${hand.handCode})`);
+        }
+        if (wantR2 && wantR2 !== wantR1 && !cardsText.includes(wantR2)) {
+          domReasons.push(`DOM cards "${cardsText}" missing rank "${wantR2}" (expected ${hand.handCode})`);
+        }
+
+        if (domReasons.length > 0) {
+          const reason = domReasons.join(' | ');
+          console.error('[PokerTrainer] DOM INTEGRITY FAIL at paint:', reason, {
+            id: hand.id,
+            handCode: hand.handCode,
+            domSituation: situationText,
+            domCards: cardsText,
+            handIdx,
+            buildId,
+            userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
+            ts: new Date().toISOString(),
+          });
+          flagHand(userId, {
+            handCode: hand.handCode,
+            position: hand.position,
+            stack: hand.stack,
+            situation: hand.situation,
+            cards: hand.cards,
+            appAction: hand.choices?.[hand.correct] ?? '',
+            userAction: null,
+            explanation: `DOM situation="${situationText.slice(0, 200)}" | DOM cards="${cardsText}"`,
+            note: `AUTO_DOM_INTEGRITY_FAIL: ${reason} | handIdx=${handIdx} | id=${hand.id} | build=${buildId}`,
+            isBonus,
+          }).catch(() => { /* logged by flagHand */ });
+        }
+      });
+    });
+
+    return () => {
+      if (rafA) cancelAnimationFrame(rafA);
+      if (rafB) cancelAnimationFrame(rafB);
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [handIdx]);
+  }, [handIdx, hand?.id]);
 
   if (!hand) return null;
   const isCorrect = selected === hand.correct;
@@ -152,6 +263,18 @@ function DailyHandsGame({ hands, iq, streak, rank, isBonus, userId, onComplete, 
   };
 
   const handleFlag = async () => {
+    // Capture what the DOM is actually rendering right now, so user-initiated
+    // flags record what was on screen (not just the hand object). This is the
+    // critical missing piece for diagnosing the "cards don't match text" bug —
+    // if the DOM disagrees with the hand object at flag time, the note will
+    // show both, and we can prove where the desync is.
+    const domSituation = situationRef.current?.textContent?.slice(0, 200) || '';
+    const domCards = cardsContainerRef.current?.textContent || '';
+    const userNoteClean = (flagNote || '').trim();
+    const augmentedNote =
+      (userNoteClean ? userNoteClean + ' | ' : '') +
+      `build=${buildId} | id=${hand.id} | handIdx=${handIdx} | domCards="${domCards}" | domSituation="${domSituation}"`;
+
     const data: FlaggedHandData = {
       handCode: hand.handCode,
       position: hand.position,
@@ -161,7 +284,7 @@ function DailyHandsGame({ hands, iq, streak, rank, isBonus, userId, onComplete, 
       appAction: hand.choices[hand.correct],
       userAction: selected !== null ? hand.choices[selected] : null,
       explanation: hand.tipWrong,
-      note: flagNote,
+      note: augmentedNote,
       isBonus,
     };
     await flagHand(userId, data);
@@ -223,7 +346,7 @@ function DailyHandsGame({ hands, iq, streak, rank, isBonus, userId, onComplete, 
           {isBonus ? `Bonus Hand ${handIdx + 1}` : `Hand ${handIdx + 1} of ${hands.length}`}
         </div>
 
-        <div style={{ fontSize: 15, color: 'var(--on-surface, #1a1a1a)', lineHeight: 1.7, marginBottom: 18 }}>
+        <div ref={situationRef} style={{ fontSize: 15, color: 'var(--on-surface, #1a1a1a)', lineHeight: 1.7, marginBottom: 18 }}>
           You&apos;re on the <strong style={{ color: '#10b981' }}>{hand.position}</strong> with <strong style={{ color: '#10b981' }}>{hand.stack}</strong>.
           <br />{hand.situation}
         </div>
@@ -238,8 +361,11 @@ function DailyHandsGame({ hands, iq, streak, rank, isBonus, userId, onComplete, 
           </div>
         )}
 
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginBottom: 20 }}>
-          {hand.cards.map((c, i) => <PlayingCard key={i} rank={c.rank} suit={c.suit} delay={i * 0.1} />)}
+        <div ref={cardsContainerRef} style={{ display: 'flex', gap: 10, justifyContent: 'center', marginBottom: 20 }}>
+          {/* Key includes hand.id so React fully remounts card elements on every
+              new hand — prevents reconciliation-based stale-DOM desyncs where
+              the previous hand's rendered card persists while text updates. */}
+          {hand.cards.map((c, i) => <PlayingCard key={`${hand.id}-${i}`} rank={c.rank} suit={c.suit} delay={i * 0.1} />)}
         </div>
 
         {/* Choice buttons */}
@@ -261,7 +387,7 @@ function DailyHandsGame({ hands, iq, streak, rank, isBonus, userId, onComplete, 
             }
 
             return (
-              <button key={i} onClick={() => handleChoice(i)} style={{
+              <button key={`${hand.id}-c${i}`} onClick={() => handleChoice(i)} style={{
                 width: '100%', padding: '14px 16px', fontSize: 15, fontWeight: 600,
                 background: btnBg, border: `2px solid ${btnBorder}`, borderRadius: 12,
                 color: btnColor, cursor: selected !== null ? 'default' : 'pointer',

@@ -50,4 +50,5 @@ next-env.d.ts
 build-log.txt
 .commitmsg
 project-management/_backups/
+project-management/flag-pulls/
 build_log.txt
