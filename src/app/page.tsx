@@ -5,34 +5,43 @@ import { useEffect, useState } from 'react';
 import LeagueBrand from '@/components/ui/LeagueBrand';
 import { useLeague } from '@/lib/services/league-context';
 import { useAuth } from '@/lib/services/auth-context';
-import { getUserPreferredMode, setUserPreferredMode } from '@/lib/services/play-storage';
+import { getTodaysChallenge, setUserPreferredMode } from '@/lib/services/play-storage';
 
 export default function WelcomePage() {
   const router = useRouter();
   const { league, isWhiteLabel } = useLeague();
-  const { user, profile, isGuest } = useAuth();
-  const [checking, setChecking] = useState(true);
+  const { user, profile } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [dailyDone, setDailyDone] = useState(false);
+  const [preferredMode, setPreferredMode] = useState<string | null>(null);
 
-  // If user already has a preferred mode, redirect immediately
+  // Resolve user state: preferred mode (for "continue" hint) and whether today's Daily 5 is done.
+  // We do NOT auto-redirect anymore — Home is a real home page for everyone, so train users see Daily 5.
   useEffect(() => {
-    async function checkMode() {
-      // Check profile first (signed-in users)
-      if (user && profile?.preferred_mode) {
-        router.replace(profile.preferred_mode === 'play' ? '/play' : '/learn');
-        return;
+    let cancelled = false;
+    async function resolve() {
+      // Preferred mode (for the "Continue to your mode" hint)
+      let pref: string | null = profile?.preferred_mode ?? null;
+      if (!pref) {
+        try { pref = localStorage.getItem('poker-trainer-preferred-mode'); } catch { /* noop */ }
       }
-      // Check localStorage for guests AND signed-in users without profile.preferred_mode
-      try {
-        const saved = localStorage.getItem('poker-trainer-preferred-mode');
-        if (saved) { router.replace(saved === 'play' ? '/play' : '/learn'); return; }
-      } catch { /* noop */ }
-      setChecking(false);
-    }
-    checkMode();
-  }, [user, profile, router]);
+      if (!cancelled) setPreferredMode(pref);
 
-  const handleModeSelect = async (mode: 'play' | 'train') => {
-    // Save preference
+      // Today's Daily 5 status (only for signed-in users; guests always see the CTA fresh)
+      if (user) {
+        try {
+          const today = await getTodaysChallenge(user.id);
+          if (!cancelled) setDailyDone(!!today);
+        } catch { /* noop */ }
+      }
+      if (!cancelled) setLoading(false);
+    }
+    resolve();
+    return () => { cancelled = true; };
+  }, [user, profile]);
+
+  const goToMode = async (mode: 'play' | 'train') => {
+    // Persist the preference so future visits can surface the right "continue" hint
     if (user) {
       await setUserPreferredMode(user.id, mode);
     } else {
@@ -41,7 +50,11 @@ export default function WelcomePage() {
     router.push(mode === 'play' ? '/play' : '/learn');
   };
 
-  if (checking) {
+  const goToDaily5 = () => {
+    router.push('/play');
+  };
+
+  if (loading) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <p style={{ color: 'var(--muted, #94a3b8)' }}>Loading...</p>
@@ -52,65 +65,95 @@ export default function WelcomePage() {
   return (
     <div style={{
       display: 'flex', flexDirection: 'column', alignItems: 'center',
-      justifyContent: 'center', minHeight: '100vh', textAlign: 'center',
-      padding: '40px 16px', maxWidth: 420, margin: '0 auto',
+      justifyContent: 'flex-start', minHeight: '100vh', textAlign: 'center',
+      padding: '32px 16px 40px', maxWidth: 440, margin: '0 auto',
     }}>
       {/* League / default brand */}
-      <div style={{ marginBottom: 16 }}>
-        <LeagueBrand size={72} />
+      <div style={{ marginBottom: 14 }}>
+        <LeagueBrand size={64} />
       </div>
 
-      <h1 style={{ fontSize: 28, fontWeight: 800, letterSpacing: -0.5, margin: '0 0 8px', color: 'var(--on-surface, #1a1a1a)' }}>
-        How do you poker?
+      <h1 style={{ fontSize: 26, fontWeight: 800, letterSpacing: -0.5, margin: '0 0 6px', color: 'var(--on-surface, #1a1a1a)' }}>
+        {dailyDone ? 'Welcome back' : "Today's Daily 5"}
       </h1>
-      <p style={{ fontSize: 15, color: '#94a3b8', lineHeight: 1.5, margin: '0 0 32px' }}>
-        Pick the experience that fits you.<br />You can always switch later.
+      <p style={{ fontSize: 14, color: '#94a3b8', lineHeight: 1.5, margin: '0 0 22px' }}>
+        {dailyDone
+          ? 'You finished today\u2019s Daily 5. Grab your bonus hand or jump back in.'
+          : 'Five hands. Sixty seconds. Test your instincts.'}
       </p>
 
-      {/* Play mode card */}
-      <button onClick={() => handleModeSelect('play')} style={{
-        width: '100%', padding: '24px 20px', borderRadius: 16, border: 'none', cursor: 'pointer',
-        background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-        marginBottom: 14, textAlign: 'left',
+      {/* Daily 5 card — the hero CTA for everyone */}
+      <button onClick={goToDaily5} style={{
+        width: '100%', padding: '22px 20px', borderRadius: 16, border: 'none', cursor: 'pointer',
+        background: dailyDone
+          ? 'linear-gradient(135deg, #334155 0%, #1e293b 100%)'
+          : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+        marginBottom: 20, textAlign: 'left',
       }}>
-        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1, color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', marginBottom: 8 }}>
-          ⭐ Most popular
+        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1, color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', marginBottom: 6 }}>
+          {dailyDone ? '\u2714 Completed today' : '\u2b50 Daily challenge'}
         </div>
-        <div style={{ fontSize: 22, fontWeight: 800, color: '#fff', marginBottom: 6 }}>I play for fun</div>
-        <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.8)', lineHeight: 1.5, marginBottom: 12 }}>
-          Quick daily challenges. Test your instincts, climb the leaderboard, trash talk your league.
+        <div style={{ fontSize: 22, fontWeight: 800, color: '#fff', marginBottom: 4 }}>
+          {dailyDone ? 'Open Play mode' : 'Play Daily 5'}
         </div>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {['60 sec/day', 'Daily challenge', 'League ranks'].map(t => (
-            <span key={t} style={{ fontSize: 12, fontWeight: 600, padding: '4px 10px', borderRadius: 20, background: 'rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.9)' }}>{t}</span>
-          ))}
+        <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', lineHeight: 1.5 }}>
+          {dailyDone
+            ? 'See today\u2019s score, streak, and bonus hand.'
+            : 'Quick decisions on five real scenarios. 60 seconds, then back to your day.'}
         </div>
       </button>
 
-      {/* Train mode card */}
-      <button onClick={() => handleModeSelect('train')} style={{
-        width: '100%', padding: '24px 20px', borderRadius: 16, cursor: 'pointer',
-        background: 'var(--surface-container, #ffffff)', border: '1px solid var(--outline-variant, #e8e2d9)',
+      {/* Mode navigation */}
+      <div style={{ width: '100%', fontSize: 12, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1, textAlign: 'left', marginBottom: 8 }}>
+        Choose your mode
+      </div>
+
+      {/* Play mode */}
+      <button onClick={() => goToMode('play')} style={{
+        width: '100%', padding: '16px 18px', borderRadius: 14, cursor: 'pointer',
+        background: 'var(--surface-container, #ffffff)',
+        border: preferredMode === 'play'
+          ? '2px solid #10b981'
+          : '1px solid var(--outline-variant, #e8e2d9)',
+        textAlign: 'left', marginBottom: 10,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+          <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--on-surface, #e2e8f0)' }}>Play mode</div>
+          {preferredMode === 'play' && (
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#10b981', background: 'rgba(16,185,129,0.12)', padding: '3px 8px', borderRadius: 10 }}>Your mode</span>
+          )}
+        </div>
+        <div style={{ fontSize: 13, color: '#94a3b8', lineHeight: 1.5 }}>
+          Daily challenges, leaderboard, league trash talk.
+        </div>
+      </button>
+
+      {/* Train mode */}
+      <button onClick={() => goToMode('train')} style={{
+        width: '100%', padding: '16px 18px', borderRadius: 14, cursor: 'pointer',
+        background: 'var(--surface-container, #ffffff)',
+        border: preferredMode === 'train'
+          ? '2px solid #10b981'
+          : '1px solid var(--outline-variant, #e8e2d9)',
         textAlign: 'left', marginBottom: 14,
       }}>
-        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1, color: '#64748b', textTransform: 'uppercase', marginBottom: 8 }}>
-          For grinders
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+          <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--on-surface, #e2e8f0)' }}>Train mode</div>
+          {preferredMode === 'train' && (
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#10b981', background: 'rgba(16,185,129,0.12)', padding: '3px 8px', borderRadius: 10 }}>Your mode</span>
+          )}
         </div>
-        <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--on-surface, #e2e8f0)', marginBottom: 6 }}>I want to win more</div>
-        <div style={{ fontSize: 14, color: '#94a3b8', lineHeight: 1.5, marginBottom: 12 }}>
-          Find your leaks, drill your weak spots, log hands and get coaching feedback.
-        </div>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {['Hand logger', 'Leak detection', 'Coaching'].map(t => (
-            <span key={t} style={{ fontSize: 12, fontWeight: 600, padding: '4px 10px', borderRadius: 20, background: 'rgba(100,116,139,0.2)', color: '#94a3b8' }}>{t}</span>
-          ))}
+        <div style={{ fontSize: 13, color: '#94a3b8', lineHeight: 1.5 }}>
+          Learn the tracks, drill your weak spots, log hands and review.
         </div>
       </button>
 
-      <div style={{ fontSize: 12, color: '#64748b', marginTop: 6, textAlign: 'center' }}>You can switch modes anytime in settings</div>
+      <div style={{ fontSize: 11, color: '#64748b', textAlign: 'center' }}>
+        You can switch modes anytime
+      </div>
 
       {/* Copyright */}
-      <div style={{ marginTop: 32, textAlign: 'center', lineHeight: 1.8 }}>
+      <div style={{ marginTop: 28, textAlign: 'center', lineHeight: 1.8 }}>
         <p style={{ fontSize: 12, color: '#475569', margin: 0 }}>
           {league.copyright || (
             <>&copy; {new Date().getFullYear()} Chuck Poole &amp; Chris Thatcher. All rights reserved.</>
