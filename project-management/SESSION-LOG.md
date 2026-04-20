@@ -4,6 +4,58 @@ This file is updated at the end of every work session. Read this first when star
 
 ---
 
+## Session: April 19, 2026
+**Focus:** Automate flagged-hands pull + analysis; fix the integrity check so desync bugs actually get recorded
+
+### Context
+Chris asked for (c) a one-shot analysis of open flagged hands, then (a) admin Flags tab upgrade, then (b) scheduled daily digest. He also picked option 1 for Daily 5 visibility — make Home a real home page for all users. Mid-session pivot: after reviewing the 8 flags and noticing **zero `AUTO_INTEGRITY_FAIL` rows** despite multiple user-reported card/text desyncs, the priority became "fix the integrity check" before anything else — the instrumentation was blind.
+
+### What was done
+**1. Flagged-hands pull automation (item c).**
+- `scripts/pull-flagged-hands.js` — Node script reads `SUPABASE_SERVICE_ROLE_KEY` from `.env.local` (custom parser, no dotenv), queries `flagged_hands` with a profiles join, writes `project-management/flag-pulls/flagged-YYYY-MM-DD.{json,md}`. `scripts/` is gitignored (local tooling), `flag-pulls/` added to .gitignore (contains user ids).
+- `pull-flags.bat` (repo root) — double-click wrapper so Chris can run the pull himself without PowerShell/cmd gymnastics.
+- Added `SUPABASE_SERVICE_ROLE_KEY=sb_secret_*` to `.env.local` (new sb_secret_ key format).
+- Pulled 8 flags: 7 open, 1 agreed. Categories: 4 card/text desync complaints (J3s vs 85s, T4o vs TT, KJs wording, missing Call option), 2 no-note flags (92o, A2o), 1 agreed (AJs).
+
+**2. Integrity-check fix (pivot — main work).**
+Root cause: the existing `useEffect` integrity check in `DailyHandsGame` validated the hand **object** against itself (does `hand.cards` agree with `hand.handCode`, do tip arrays include the handCode) but never verified the **DOM actually rendered those cards and text**. Render desyncs — stale cards from a previous hand paired with new situation text — passed silently. That's why 3 user flags described desync but `AUTO_INTEGRITY_FAIL` rows = 0.
+
+Fix has 3 layers in `src/app/play/page.tsx`:
+- **DOM-level post-paint check.** Added `situationRef` and `cardsContainerRef`, and a double-rAF `useEffect` that reads `textContent` after paint and verifies it contains the expected position, stack, and both card ranks. Mismatch → auto-flag `AUTO_DOM_INTEGRITY_FAIL:` with the actual vs expected strings.
+- **Strengthened data check.** Suit-pattern consistency (suited codes share a suit, offsuit don't), choices array validity (length > 0, correct index in range) added to the pre-existing data check.
+- **Forced remount per hand.** Card keys changed from `key={i}` to `key={${hand.id}-${i}}`; choice button keys to `key={${hand.id}-c${i}}`. Prevents React reconciliation from reusing a DOM node across hand transitions — the mechanism that allowed stale cards to linger.
+
+Every flag (auto or user) now records `build=<commit-sha-7>` (from `NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA`) and `id=<hand.id>` for deploy correlation. User-initiated flags also capture `domCards` and `domSituation` — if desync recurs we get ground-truth DOM data.
+
+### Decisions made
+- **DOM check, not DOM snapshot.** Kept it to a plain `textContent` substring scan — fast, robust to layout changes, avoids serializing whole subtrees into every flag row.
+- **Force remount over trying to fix the reconciliation.** The hand-to-hand transition doesn't need to preserve DOM — cards are different, positions are different. Keying by `hand.id` is the cheapest way to guarantee a fresh render every time.
+- **Build ID in every flag.** If a user reports a desync tomorrow, we can tell immediately whether it came from the pre-fix build or a post-fix one. Cheap correlation, high debugging value.
+- **Deferred Daily 5 option 1 and admin Flags upgrade.** Getting the integrity fix into production was more important — without it we have no visibility into whether the desync bug is still happening.
+
+### Validation
+- `next build` clean — "✓ Compiled successfully in 6.1s, Finished TypeScript in 4.9s, Generating static pages (24/24)".
+- Manual review of the diff: all 4 ref attachments are on the right elements, the double-rAF pattern matches the iOS Safari style-commit timing convention, dep array `[handIdx, hand?.id]` retriggers the check on hand transitions.
+- Cannot validate the DOM check end-to-end locally (would need to reproduce a desync), but the **absence of AUTO_DOM_INTEGRITY_FAIL rows in the next 24–48h pull** becomes the negative verification; the **presence** of any such rows is the positive verification that the check is now catching real desyncs.
+
+### Committed and pushed
+- Commit `7ee5bbb` — `fix(play): harden integrity check with DOM-level verification + force remount per hand`
+- Pushed to `origin/master` at session close. Vercel will deploy.
+
+### What's next
+- **24–48h watch.** Re-run `pull-flags.bat` Tuesday/Wednesday. Looking for (1) `AUTO_DOM_INTEGRITY_FAIL` rows — proof the check works; (2) drop in user-reported card/text mismatch flags — proof the fix works; (3) any user flags that still report desync will now carry `domCards` / `domSituation` capture, which pinpoints the actual rendered state.
+- **Daily 5 option 1.** Make Home a real home page that shows Daily 5 to all users (currently `/` redirects train users away from Daily 5 based on `profile.preferred_mode`). Train users never see Daily 5 today.
+- **(a) Admin Flags tab upgrade** — category summary, filter by status/date/user, direct link to pull script output.
+- **(b) Scheduled daily digest** — cron that runs pull-flagged-hands.js, emails or Slacks the delta since last run.
+
+### End-of-day sync (closed 2026-04-19)
+- **Repo state at close:** origin/master == HEAD (commit 7ee5bbb pushed). Working tree has 2 uncommitted items: `M project-management/SESSION-LOG.md` (this file — will commit with this session close) and `?? project-management/BAR-POKER-RESEARCH.md` (research doc from 2026-04-16 that was never committed — separate follow-up).
+- **Build:** clean on last run pre-commit.
+- **Deferred items:** None blocking. Next session: verify fix in production via flag pull, then Daily 5 option 1.
+- **Local-only artifacts:** `scripts/pull-flagged-hands.js`, `.env.local` service role key, `project-management/flag-pulls/` all stay local. `pull-flags.bat` (repo root) is committed so both Chris and Chuck can run pulls.
+
+---
+
 ## Session: April 16, 2026
 **Focus:** Hide the new Facing Limpers and 3-Betting modules from production users
 
@@ -46,10 +98,53 @@ Added an `adminMode` flag driven by `profile?.is_admin === true` to both the Pla
 - **Once fixed, re-enable.** Remove `ADMIN_ONLY_*` filters and revert the dispatch split in the two generator files.
 - **Keep the `flagged_hands` instrumentation running.** The A♦3♦-vs-AA bug could still recur in the facing_open / unopened paths; `AUTO_INTEGRITY_FAIL:` rows in Supabase are the evidence trail.
 
+### Research for module rebuild (evening, Chris asleep)
+Chris asked for homework before the next session: research bar poker and
+low-stakes limping dynamics so we walk in with a clearer picture of the
+target player pool. His own thesis: *"they all like cheap flops, can't fold
+top pair and never met an ace they didn't love. They can't spell GTO let
+alone play GTO ranges."*
+
+**What was done**
+- 6 WebSearches across bar poker / calling station strategy, iso-raise sizing
+  with multiple limpers, short-stack tournament ranges, overlimp candidates,
+  top-pair overvaluation, multiway pot strategy, 3-bet exploit adjustments,
+  and typical limper hand ranges.
+- Compiled findings into `project-management/BAR-POKER-RESEARCH.md`
+  organized around Chris's three reported problems (wrong ranges → loosen;
+  wrong action descriptions → bar-poker voice; single-limper assumption →
+  multi-way modeling + 4bb + 1bb/limper sizing + overlimp candidates).
+- Concrete punch list in the research doc maps cleanly to WORK-PLAN.md
+  Priority 1e (range audit, explanation rewrite, multi-way modeling, 3-bet
+  rebuild, re-enablement checklist).
+- Saved two memories so future sessions inherit the thesis automatically:
+  `project_bar_poker_thesis.md` (the player-pool model) and
+  `feedback_poker_trainer_voice.md` (no solver-speak in explanations).
+
+**Key takeaways for the rebuild**
+- The target pool calls too much and bluffs too little — value-bet
+  relentlessly, cut bluffs almost entirely, size up for value.
+- Live iso-sizing is 4bb + 1bb per limper in position (5bb + 1bb OOP). Verify
+  the generator emits sizes that match.
+- Overlimp for speculative hands (suited connectors, suited Ax, small pairs)
+  in late position behind multiple limpers — this is a missing action in the
+  current module.
+- Model multi-way as the default: 1 limper ≈ 25%, 2 limpers ≈ 45%,
+  3 limpers ≈ 25%, 4+ ≈ 5%.
+- Against 3-bets, fold way more than GTO says — this pool doesn't 3-bet bluff.
+- Explanation templates need a bar-poker voice with opponent-range plain-
+  language callouts and explicit "here's why GTO doesn't apply" framing.
+
 ### End-of-day sync (closed 2026-04-16)
-- **Repo state:** 1 commit ahead of origin/master (this session's change). Ready to push; will push after Chris reviews.
+- **Repo state:** 1 commit ahead of origin/master (the gate-hiding commit).
+  Research artifacts are project-management docs only — no app code touched
+  in the evening pass.
 - **Build:** clean on last run. No stuck processes.
-- **Deferred items:** none carrying over. All follow-up lives in WORK-PLAN.md Priority 1e.
+- **Deferred items:** none carrying over. All follow-up lives in
+  WORK-PLAN.md Priority 1e, now cross-referenced from BAR-POKER-RESEARCH.md.
+- **Docs to read first next session:** `BAR-POKER-RESEARCH.md` then
+  `WORK-PLAN.md` Priority 1e — the research doc has the why, the work plan
+  has the how.
 
 ---
 
