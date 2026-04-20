@@ -13,26 +13,36 @@ const ONBOARDING_QUESTIONS = [
   FOUNDATIONS_QUESTIONS[9],  // What does "fold equity" mean?
 ];
 
-// Position data for the table map
+// Position data for the table map — full 9-seat table in preflop-action order.
+// Preflop action flows: UTG → UTG+1 → MP → LJ → HJ → CO → BTN → SB → BB (ends at BB).
 const POSITIONS = [
-  { abbr: 'SB', name: 'Small Blind', color: '#ef4444',
-    desc: 'Posts half a blind. Worst position — acts first after the flop.',
-    approach: 'When folded to you, raise or shove. Never limp.' },
-  { abbr: 'BB', name: 'Big Blind', color: '#ef4444',
-    desc: 'Posts a full blind. Gets a discount to see flops.',
-    approach: 'Defend wide against late position raises. Tighten up against early position.' },
   { abbr: 'UTG', name: 'Under the Gun', color: '#f59e0b',
-    desc: 'First to act preflop. 8-9 players behind you.',
+    desc: 'First to act preflop. 8 players behind you.',
     approach: 'Play tight. Only premium hands. Fold everything marginal.' },
+  { abbr: 'UTG+1', name: 'Under the Gun +1', color: '#f59e0b',
+    desc: 'Second to act preflop. 7 players behind you.',
+    approach: 'Still tight. Premium hands plus a few strong suited broadways.' },
+  { abbr: 'MP', name: 'Middle Position', color: '#f59e0b',
+    desc: 'Third to act preflop. 6 players behind you.',
+    approach: 'Open up modestly. Add pocket pairs and suited aces.' },
+  { abbr: 'LJ', name: 'Lojack', color: '#f59e0b',
+    desc: 'Two seats before the Button. 5 players behind you.',
+    approach: 'Start widening. Suited connectors, more broadways, most pairs.' },
   { abbr: 'HJ', name: 'Hijack', color: '#f59e0b',
-    desc: 'Middle position. 4-5 players behind you.',
-    approach: 'Open up slightly. Add suited connectors and broadways.' },
+    desc: 'One seat before the Cutoff. 4 players behind you.',
+    approach: 'Open wider. Steal attempts become worthwhile here.' },
   { abbr: 'CO', name: 'Cutoff', color: '#10b981',
     desc: 'Second-best position. Only 3 players behind you.',
     approach: 'Play wide. Steal the blinds. Raise most playable hands.' },
   { abbr: 'BTN', name: 'Button', color: '#10b981',
     desc: 'Best position. Acts last after the flop. Only 2 players to beat.',
     approach: 'Play very wide. Any ace, any suited king, most pairs. Steal aggressively.' },
+  { abbr: 'SB', name: 'Small Blind', color: '#ef4444',
+    desc: 'Posts half a blind. Worst position — acts first after the flop.',
+    approach: 'When folded to you, raise or shove. Never limp.' },
+  { abbr: 'BB', name: 'Big Blind', color: '#ef4444',
+    desc: 'Posts a full blind. Last to act preflop, gets a discount to see flops.',
+    approach: 'Defend wide against late position raises. Tighten up against early position.' },
 ];
 
 interface OnboardingProps {
@@ -103,14 +113,17 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
           boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
         }}>
           <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: 2 }}>DEALER</div>
-          {/* Position badges around the table */}
+          {/* Position badges around the table — all 9 seats, clockwise from top-left (UTG) */}
           {[
-            { abbr: 'UTG', top: '8%', left: '25%' },
-            { abbr: 'HJ', top: '8%', left: '55%' },
-            { abbr: 'CO', top: '25%', left: '82%' },
-            { abbr: 'BTN', top: '60%', left: '85%' },
-            { abbr: 'SB', top: '80%', left: '60%' },
-            { abbr: 'BB', top: '80%', left: '30%' },
+            { abbr: 'UTG',   top: '12%', left: '18%' },
+            { abbr: 'UTG+1', top: '3%',  left: '38%' },
+            { abbr: 'MP',    top: '3%',  left: '58%' },
+            { abbr: 'LJ',    top: '12%', left: '78%' },
+            { abbr: 'HJ',    top: '32%', left: '92%' },
+            { abbr: 'CO',    top: '62%', left: '92%' },
+            { abbr: 'BTN',   top: '85%', left: '78%' },
+            { abbr: 'SB',    top: '92%', left: '48%' },
+            { abbr: 'BB',    top: '85%', left: '18%' },
           ].map((p) => {
             const posData = POSITIONS.find(pos => pos.abbr === p.abbr);
             return (
