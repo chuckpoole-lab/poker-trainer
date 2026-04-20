@@ -654,8 +654,11 @@ export default function PlayPage() {
           getUserPokerIQ(user.id),
           getStreak(user.id),
           getTodaysChallenge(user.id),
-          getLeaderboard(profile.league_slug, 10),
-          getUserRankWithCount(user.id, profile.league_slug),
+          // Global leaderboard for now. League-scoped view will come back when
+          // league membership is fully wired (users are not linked to leagues
+          // yet, so filtering by league hides everyone and shows #1 of 1).
+          getLeaderboard(null, 10),
+          getUserRankWithCount(user.id, null),
           getDailyChallengeHistory(user.id, 14),
         ]);
         setIq(userIq);
@@ -720,8 +723,9 @@ export default function PlayPage() {
       // saveDailyChallengeResult runs — we just have to re-fetch them.
       const [newStreak, rankData, board, history] = await Promise.all([
         getStreak(user.id),
-        getUserRankWithCount(user.id, profile?.league_slug ?? null),
-        getLeaderboard(profile?.league_slug ?? null, 10),
+        // Global leaderboard — see comment in load() useEffect above.
+        getUserRankWithCount(user.id, null),
+        getLeaderboard(null, 10),
         getDailyChallengeHistory(user.id, 14),
       ]);
       setStreak(newStreak.current_streak);

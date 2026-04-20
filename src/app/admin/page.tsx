@@ -222,7 +222,11 @@ export default function AdminDashboard() {
                   {dailyStats.total_sessions}
                 </div>
                 <div style={{ fontSize: 'var(--text-xs)', color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>
-                  Sessions Today
+                  Page Visits Today
+                  <span
+                    title="Every page load = 1 visit. One user reloading twice shows as 2 visits. See Unique devices below for distinct-visitor count."
+                    style={{ marginLeft: 4, cursor: 'help', opacity: 0.7 }}
+                  >ⓘ</span>
                 </div>
                 <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', marginTop: 2 }}>
                   {dailyStats.registered_sessions} reg &middot; {dailyStats.guest_sessions} guest
@@ -239,6 +243,10 @@ export default function AdminDashboard() {
                 </div>
                 <div style={{ fontSize: 'var(--text-xs)', color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>
                   Registered
+                  <span
+                    title="Visits from signed-in users. These users show up in the Users tab."
+                    style={{ marginLeft: 4, cursor: 'help', opacity: 0.7 }}
+                  >ⓘ</span>
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
                   signed-in accounts
@@ -250,6 +258,10 @@ export default function AdminDashboard() {
                 </div>
                 <div style={{ fontSize: 'var(--text-xs)', color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>
                   Guests
+                  <span
+                    title="Visits from anonymous visitors (no account). Guest play is only saved locally, so guests never appear in the Users tab."
+                    style={{ marginLeft: 4, cursor: 'help', opacity: 0.7 }}
+                  >ⓘ</span>
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
                   not in Users tab
