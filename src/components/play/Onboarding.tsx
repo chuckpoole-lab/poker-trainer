@@ -104,15 +104,16 @@ export default function Onboarding({ onComplete, onSkip }: OnboardingProps) {
           <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>Positions determine your strategy. Learn the table, then test yourself.</div>
         </div>
 
-        {/* Visual table — oval with positions */}
+        {/* Visual table — oval with positions. Felt and rim are hardcoded so the
+            table reads as poker felt regardless of the app's light/dark palette. */}
         <div style={{
           position: 'relative', width: '100%', maxWidth: 340, height: 200,
           margin: '0 auto 24px', borderRadius: '50%',
-          background: 'var(--surface-container, #065f46)',
-          border: '4px solid var(--outline-variant, #047857)',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+          background: 'radial-gradient(ellipse at center, #0d7a44 0%, #065f33 80%)',
+          border: '6px solid #3a2815',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.25), inset 0 0 40px rgba(0,0,0,0.25)',
         }}>
-          <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: 2 }}>DEALER</div>
+          <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', letterSpacing: 2 }}>DEALER</div>
           {/* Position badges around the table — all 9 seats, clockwise from top-left (UTG) */}
           {[
             { abbr: 'UTG',   top: '12%', left: '18%' },

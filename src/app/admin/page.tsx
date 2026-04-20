@@ -214,14 +214,18 @@ export default function AdminDashboard() {
 
         return (
           <>
-            {/* Today's headline stats */}
+            {/* Today's headline stats — left-border accents so Registered/Guests
+                stay visually distinct regardless of palette. */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 16 }}>
-              <Card elevation="raised" style={{ padding: 14, textAlign: 'center' }}>
+              <Card elevation="raised" style={{ padding: 14, textAlign: 'center', borderLeft: '4px solid var(--primary)' }}>
                 <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--primary)', fontFamily: 'var(--font-display)' }}>
                   {dailyStats.total_sessions}
                 </div>
                 <div style={{ fontSize: 'var(--text-xs)', color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>
                   Sessions Today
+                </div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', marginTop: 2 }}>
+                  {dailyStats.registered_sessions} reg &middot; {dailyStats.guest_sessions} guest
                 </div>
                 {yesterdayStats && (
                   <div style={{ fontSize: 11, fontWeight: 600, color: trendColor(dailyStats.total_sessions, yd.total_sessions), marginTop: 2 }}>
@@ -229,20 +233,26 @@ export default function AdminDashboard() {
                   </div>
                 )}
               </Card>
-              <Card elevation="raised" style={{ padding: 14, textAlign: 'center' }}>
-                <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--color-correct)', fontFamily: 'var(--font-display)' }}>
+              <Card elevation="raised" style={{ padding: 14, textAlign: 'center', borderLeft: '4px solid #10b981' }}>
+                <div style={{ fontSize: 28, fontWeight: 800, color: '#10b981', fontFamily: 'var(--font-display)' }}>
                   {dailyStats.registered_sessions}
                 </div>
                 <div style={{ fontSize: 'var(--text-xs)', color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>
                   Registered
                 </div>
+                <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
+                  signed-in accounts
+                </div>
               </Card>
-              <Card elevation="raised" style={{ padding: 14, textAlign: 'center' }}>
-                <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--gold)', fontFamily: 'var(--font-display)' }}>
+              <Card elevation="raised" style={{ padding: 14, textAlign: 'center', borderLeft: '4px solid #f59e0b' }}>
+                <div style={{ fontSize: 28, fontWeight: 800, color: '#f59e0b', fontFamily: 'var(--font-display)' }}>
                   {dailyStats.guest_sessions}
                 </div>
                 <div style={{ fontSize: 'var(--text-xs)', color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>
                   Guests
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
+                  not in Users tab
                 </div>
               </Card>
             </div>
