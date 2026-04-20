@@ -38,21 +38,27 @@ Every flag (auto or user) now records `build=<commit-sha-7>` (from `NEXT_PUBLIC_
 - Manual review of the diff: all 4 ref attachments are on the right elements, the double-rAF pattern matches the iOS Safari style-commit timing convention, dep array `[handIdx, hand?.id]` retriggers the check on hand transitions.
 - Cannot validate the DOM check end-to-end locally (would need to reproduce a desync), but the **absence of AUTO_DOM_INTEGRITY_FAIL rows in the next 24–48h pull** becomes the negative verification; the **presence** of any such rows is the positive verification that the check is now catching real desyncs.
 
+### Daily 5 option 1 — shipped (bonus item after fix)
+Rewrote `src/app/page.tsx`. Root `/` no longer auto-redirects based on `profile.preferred_mode`. It's now a real home page: brand header, hero Daily 5 CTA (links to `/play` where the game lives), and two smaller mode nav cards (Play / Train). The user's preferred mode is highlighted with a "Your mode" chip and a green border so one-tap continuation still works. Preference is persisted on first click for both signed-in users and guests. If a signed-in user already completed today's Daily 5, the hero reframes to "Open Play mode" with a completed checkmark — still clickable for bonus hand and leaderboard, but the copy signals they're done for the day.
+
+Train users — who were the motivation for this fix — now see Daily 5 first-class on every Home load.
+
 ### Committed and pushed
-- Commit `7ee5bbb` — `fix(play): harden integrity check with DOM-level verification + force remount per hand`
-- Pushed to `origin/master` at session close. Vercel will deploy.
+- `7ee5bbb` — `fix(play): harden integrity check with DOM-level verification + force remount per hand`
+- `d751a35` — `docs: session 2026-04-19 log + add bar-poker research doc` (swept up the uncommitted BAR-POKER-RESEARCH.md from 2026-04-16)
+- `e9b3e61` — `feat(home): real home page with Daily 5 for all users (option 1)`
+
+All three pushed to `origin/master`. Vercel deploying.
 
 ### What's next
-- **24–48h watch.** Re-run `pull-flags.bat` Tuesday/Wednesday. Looking for (1) `AUTO_DOM_INTEGRITY_FAIL` rows — proof the check works; (2) drop in user-reported card/text mismatch flags — proof the fix works; (3) any user flags that still report desync will now carry `domCards` / `domSituation` capture, which pinpoints the actual rendered state.
-- **Daily 5 option 1.** Make Home a real home page that shows Daily 5 to all users (currently `/` redirects train users away from Daily 5 based on `profile.preferred_mode`). Train users never see Daily 5 today.
-- **(a) Admin Flags tab upgrade** — category summary, filter by status/date/user, direct link to pull script output.
-- **(b) Scheduled daily digest** — cron that runs pull-flagged-hands.js, emails or Slacks the delta since last run.
+- **24–48h watch on the integrity fix.** Re-run `pull-flags.bat` Tuesday/Wednesday. Looking for (1) `AUTO_DOM_INTEGRITY_FAIL` rows — proof the check works; (2) drop in user-reported card/text mismatch flags — proof the fix works; (3) any user flags that still report desync will now carry `domCards` / `domSituation` capture, which pinpoints the actual rendered state.
+- **Tasks #7 and #8** (admin Flags tab upgrade + scheduled daily digest) — Chris asked to prep options rather than implement. See `project-management/NEXT-SESSION-OPTIONS.md` for the menu: #7 has 3 options (7A minimum / 7B category-driven / 7C full tooling), #8 has 5 delivery options (local / Gmail draft / Supabase / GitHub Actions / Cowork schedule skill). Recommendations are 7A first, then 8B. Doc also includes the verification-pass checklist for task #5.
 
 ### End-of-day sync (closed 2026-04-19)
-- **Repo state at close:** origin/master == HEAD (commit 7ee5bbb pushed). Working tree has 2 uncommitted items: `M project-management/SESSION-LOG.md` (this file — will commit with this session close) and `?? project-management/BAR-POKER-RESEARCH.md` (research doc from 2026-04-16 that was never committed — separate follow-up).
-- **Build:** clean on last run pre-commit.
-- **Deferred items:** None blocking. Next session: verify fix in production via flag pull, then Daily 5 option 1.
-- **Local-only artifacts:** `scripts/pull-flagged-hands.js`, `.env.local` service role key, `project-management/flag-pulls/` all stay local. `pull-flags.bat` (repo root) is committed so both Chris and Chuck can run pulls.
+- **Repo state at close:** clean, origin/master == HEAD (3 commits pushed: 7ee5bbb, d751a35, e9b3e61, plus a final docs commit for this session log and NEXT-SESSION-OPTIONS.md).
+- **Build:** clean on last run pre-commit. Next.js 16.2.1 Turbopack, 24 routes generated, TypeScript clean in 4.4s.
+- **Deferred items:** None blocking. Chris to run `pull-flags.bat` in 24–48h for the integrity-fix verification pass. Next session: read NEXT-SESSION-OPTIONS.md, pick 7A/7B/7C for Flags tab and 8A–8E for digest.
+- **Local-only artifacts:** `scripts/pull-flagged-hands.js`, `.env.local` service role key, `project-management/flag-pulls/` all stay local. `pull-flags.bat` (repo root) and `project-management/NEXT-SESSION-OPTIONS.md` committed so both seats get them.
 
 ---
 
